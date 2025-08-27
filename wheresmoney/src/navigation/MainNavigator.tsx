@@ -5,7 +5,7 @@ import { MainTabParamList } from '../types';
 
 // Import navigators
 import HomeNavigator from './HomeNavigator';
-import ProfileScreen from '../screens/ProfileScreen';
+import ProfileNavigator from './ProfileNavigator';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -38,7 +38,7 @@ export default function MainNavigator() {
       />
       <Tab.Screen 
         name="Profile" 
-        component={ProfileScreen}
+        component={ProfileNavigator}
         options={{ tabBarLabel: '프로필' }}
       />
     </Tab.Navigator>

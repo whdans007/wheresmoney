@@ -61,6 +61,11 @@ export type MainTabParamList = {
   Profile: undefined;
 };
 
+export type ProfileStackParamList = {
+  ProfileScreen: undefined;
+  EditProfile: undefined;
+};
+
 export type AuthStackParamList = {
   Login: undefined;
   SignUp: undefined;
@@ -73,4 +78,6 @@ export type HomeStackParamList = {
   FamilyDetail: { familyId: string };
   AddLedgerEntry: { familyId: string };
   LedgerDetail: { entryId: string };
+  Invite: { familyId: string };
+  Stats: { familyId: string };
 };

@@ -17,10 +17,14 @@ export default function App() {
     const initializeAuth = async () => {
       setLoading(true);
       try {
-        await AuthService.getCurrentUser();
+        const result = await AuthService.getCurrentUser();
+        console.log('Initial auth check result:', result);
+        if (!result.user) {
+          setLoading(false);
+        }
+        // 사용자가 있으면 onAuthStateChange에서 setLoading(false) 호출
       } catch (error) {
         console.log('Auth initialization error:', error);
-      } finally {
         setLoading(false);
       }
     };
@@ -31,10 +35,22 @@ export default function App() {
     const { supabase } = require('./src/services/supabase');
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event: string, session: any) => {
-        console.log('Auth state changed:', event);
-        if (event === 'SIGNED_IN') {
-          await AuthService.getCurrentUser();
+        console.log('Auth state changed:', event, session?.user?.email);
+        
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          console.log('User signed in or token refreshed');
+          try {
+            await AuthService.getCurrentUser();
+          } catch (error) {
+            console.error('Error getting current user:', error);
+          } finally {
+            setLoading(false); // 무조건 로딩 해제
+          }
         } else if (event === 'SIGNED_OUT') {
+          console.log('User signed out');
+          useAuthStore.getState().setUser(null);
+          setLoading(false);
+        } else {
           setLoading(false);
         }
       }

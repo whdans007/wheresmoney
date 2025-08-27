@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Alert } from 'react-native';
 import { 
   TextInput, 
   Button, 
@@ -24,21 +24,82 @@ export default function LoginScreen({ navigation }: Props) {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
+  const handleResendConfirmation = async (userEmail: string) => {
+    try {
+      const { AuthService } = await import('../../services/auth');
+      
+      // 먼저 일반 재발송 시도
+      let result = await AuthService.resendConfirmationEmail(userEmail);
+      
+      if (result.error) {
+        // 일반 재발송 실패 시 강제 재발송 시도
+        Alert.alert(
+          '재발송 실패',
+          '일반 재발송이 실패했습니다. 강제 재발송을 시도하시겠습니까?',
+          [
+            { text: '취소', style: 'cancel' },
+            { 
+              text: '강제 재발송', 
+              onPress: async () => {
+                const forceResult = await AuthService.forceResendEmail(userEmail);
+                if (forceResult.error) {
+                  Alert.alert('오류', forceResult.error);
+                } else {
+                  Alert.alert('완료', forceResult.message);
+                }
+              }
+            }
+          ]
+        );
+      } else {
+        Alert.alert('완료', result.message);
+      }
+    } catch (error) {
+      Alert.alert('오류', '이메일 재발송에 실패했습니다.');
+    }
+  };
+
   const handleLogin = async () => {
     setLoading(true);
     setError('');
     
     try {
       const { AuthService } = await import('../../services/auth');
-      const { user, error } = await AuthService.signIn(email, password);
+      const result = await AuthService.signIn(email, password);
       
-      if (error) {
-        setError(error);
+      // 이메일 인증이 필요한 경우
+      if (result.needsConfirmation) {
+        setError('');
+        Alert.alert(
+          '이메일 인증 필요',
+          result.message || '이메일 인증이 필요합니다.',
+          [
+            {
+              text: '이메일 재발송',
+              onPress: () => handleResendConfirmation(result.unconfirmedEmail || email),
+            },
+            {
+              text: '확인',
+              style: 'default',
+            },
+          ]
+        );
         setLoading(false);
         return;
       }
       
-      if (user) {
+      if (result.error) {
+        // 다른 에러 처리
+        if (result.error.includes('email not confirmed') || result.error.includes('Email not confirmed')) {
+          setError('이메일 인증이 완료되지 않았습니다.\n받은편지함을 확인하여 계정을 인증해주세요.');
+        } else {
+          setError(result.error);
+        }
+        setLoading(false);
+        return;
+      }
+      
+      if (result.user) {
         // 인증 성공 - App.tsx에서 자동으로 Main Navigator로 이동
         setLoading(false);
       }

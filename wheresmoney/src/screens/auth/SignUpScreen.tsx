@@ -38,18 +38,24 @@ export default function SignUpScreen({ navigation }: Props) {
 
     try {
       const { AuthService } = await import('../../services/auth');
-      const { user, error } = await AuthService.signUp(email, password, nickname);
+      const result = await AuthService.signUp(email, password, nickname);
       
-      if (error) {
-        setError(error);
+      if (result.error) {
+        setError(result.error);
         setLoading(false);
         return;
       }
       
-      if (user) {
-        // 회원가입 성공 - 이메일 확인 메시지 표시
+      if (result.user) {
         setError('');
-        alert('회원가입이 완료되었습니다! 이메일을 확인해주세요.');
+        
+        // 이메일 인증이 필요한 경우
+        if (result.needsConfirmation) {
+          alert('회원가입이 완료되었습니다!\n\n' + (result.message || '이메일을 확인하여 계정을 인증해주세요.\n인증 완료 후 로그인할 수 있습니다.'));
+        } else {
+          alert('회원가입이 완료되었습니다!');
+        }
+        
         navigation.goBack();
       }
       

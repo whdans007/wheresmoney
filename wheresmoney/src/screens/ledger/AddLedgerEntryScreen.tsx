@@ -14,6 +14,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import * as ImagePicker from 'expo-image-picker';
 import { HomeStackParamList } from '../../types';
 import { DEFAULT_CATEGORIES } from '../../constants/categories';
+import { LedgerService } from '../../services/ledger';
 
 type AddLedgerEntryScreenRouteProp = RouteProp<HomeStackParamList, 'AddLedgerEntry'>;
 type AddLedgerEntryScreenNavigationProp = StackNavigationProp<HomeStackParamList, 'AddLedgerEntry'>;
@@ -87,26 +88,45 @@ export default function AddLedgerEntryScreen({ route, navigation }: Props) {
       return;
     }
 
+    const numericAmount = parseFloat(amount);
+    if (isNaN(numericAmount) || numericAmount <= 0) {
+      setError('올바른 금액을 입력해주세요.');
+      return;
+    }
+
     setLoading(true);
     setError('');
     
     try {
-      // TODO: Implement ledger entry creation with Supabase
-      console.log('Creating ledger entry:', {
+      console.log('가계부 저장 시작:', {
         familyId,
-        amount: parseFloat(amount),
+        amount: numericAmount,
         categoryId: selectedCategoryId,
         description,
-        image,
+        imageUri: image,
       });
-      
-      // Mock success
-      setTimeout(() => {
+
+      const result = await LedgerService.createLedgerEntry({
+        familyId,
+        amount: numericAmount,
+        categoryId: selectedCategoryId,
+        description: description.trim(),
+        imageUri: image,
+      });
+
+      if (!result.success) {
+        setError(result.error || '가계부 저장에 실패했습니다.');
         setLoading(false);
-        navigation.goBack();
-      }, 1000);
-    } catch (err) {
-      setError('가계부 저장에 실패했습니다.');
+        return;
+      }
+
+      console.log('가계부 저장 성공:', result.entry);
+      
+      // 성공적으로 저장되면 뒤로 가기
+      navigation.goBack();
+    } catch (error: any) {
+      console.error('가계부 저장 예외:', error);
+      setError('가계부 저장 중 오류가 발생했습니다.');
       setLoading(false);
     }
   };
