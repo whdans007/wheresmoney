@@ -75,6 +75,7 @@ export type AuthStackParamList = {
 export type HomeStackParamList = {
   HomeScreen: undefined;
   CreateFamily: undefined;
+  JoinFamily: undefined;
   FamilyDetail: { familyId: string };
   AddLedgerEntry: { familyId: string };
   LedgerDetail: { entryId: string };

@@ -31,12 +31,13 @@ interface Props {
 
 export default function FamilyDetailScreen({ route, navigation }: Props) {
   const { familyId } = route.params;
-  const [selectedTab, setSelectedTab] = useState<'ledger' | 'members'>('ledger');
+  const [selectedTab, setSelectedTab] = useState<'ledger' | 'members'>('members');
   const [ledgerEntries, setLedgerEntries] = useState<any[]>([]);
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [membersLoading, setMembersLoading] = useState(false);
   const [totalAmount, setTotalAmount] = useState(0);
+  const [displayName, setDisplayName] = useState<string>('');
   
   const { families } = useFamilyStore();
   const family = families.find(f => f.id === familyId);
@@ -66,9 +67,31 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
     try {
       const result = await FamilyMembersService.getFamilyMembers(familyId);
       if (result.success && result.members) {
-        setMembers(result.members);
+        // 참여일 기준으로 최신순 정렬 (최신 참여자가 위로)
+        const sortedMembers = result.members.sort((a: any, b: any) => 
+          new Date(b.joined_at).getTime() - new Date(a.joined_at).getTime()
+        );
+        setMembers(sortedMembers);
+        
+        // 가족방 이름 동적 생성
+        if (result.members.length > 0) {
+          const memberNames = result.members
+            .slice(0, 3) // 최대 3명까지만 표시
+            .map((member: any) => member.users?.nickname || '사용자')
+            .join(', ');
+          
+          const remainingCount = result.members.length > 3 ? result.members.length - 3 : 0;
+          const dynamicName = remainingCount > 0 
+            ? `${memberNames} 외 ${remainingCount}명의 가족방`
+            : `${memberNames}의 가족방`;
+            
+          setDisplayName(dynamicName);
+        } else {
+          setDisplayName(family?.name || '가족방');
+        }
       } else {
         console.error('가족 구성원 로딩 실패:', result.error);
+        setDisplayName(family?.name || '가족방');
       }
     } catch (error) {
       console.error('가족 구성원 로딩 예외:', error);
@@ -121,40 +144,53 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
     );
   };
 
-  const renderMemberItem = ({ item }: any) => (
-    <List.Item
-      title={item.users?.nickname || '사용자'}
-      description={item.users?.email}
-      left={(props) => (
-        item.users?.avatar_url ? (
-          <Image source={{ uri: item.users.avatar_url }} style={styles.memberAvatar} />
-        ) : (
-          <List.Icon {...props} icon="account" />
-        )
-      )}
-      right={() => (
-        <View style={styles.memberRightContainer}>
-          {item.role === 'owner' && (
-            <Badge style={styles.ownerBadge}>방장</Badge>
-          )}
-          <Text style={styles.joinedDateText}>
-            {new Date(item.joined_at).toLocaleDateString('ko-KR')}
-          </Text>
-        </View>
-      )}
-    />
-  );
+  const renderMemberItem = ({ item }: any) => {
+    // 최근 5분 이내 참여한 사용자는 "새로운 멤버"로 표시
+    const isNewMember = new Date().getTime() - new Date(item.joined_at).getTime() < 5 * 60 * 1000;
+    
+    return (
+      <List.Item
+        title={item.users?.nickname || '사용자'}
+        description={item.users?.email}
+        left={(props) => (
+          item.users?.avatar_url ? (
+            <Image source={{ uri: item.users.avatar_url }} style={styles.memberAvatar} />
+          ) : (
+            <List.Icon {...props} icon="account" />
+          )
+        )}
+        right={() => (
+          <View style={styles.memberRightContainer}>
+            {isNewMember && (
+              <Badge style={styles.newMemberBadge}>새 멤버</Badge>
+            )}
+            {item.role === 'owner' && (
+              <Badge style={styles.ownerBadge}>방장</Badge>
+            )}
+            <Text style={styles.joinedDateText}>
+              {new Date(item.joined_at).toLocaleDateString('ko-KR')}
+            </Text>
+          </View>
+        )}
+        style={isNewMember ? styles.newMemberItem : undefined}
+      />
+    );
+  };
 
   return (
     <View style={styles.container}>
       <Card style={styles.headerCard}>
         <Card.Content>
-          <Title>{family?.name || '가족방'}</Title>
+          <Title>{displayName || family?.name || '가족방'}</Title>
           <Text>{family?.description || ''}</Text>
           {selectedTab === 'ledger' && (
             <View style={styles.statsContainer}>
               <View style={styles.statsRow}>
-                <Text style={styles.totalAmountText}>
+                <Text 
+                  style={styles.totalAmountText}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
                   이번 달 총 지출: {totalAmount.toLocaleString()}원
                 </Text>
                 <Button
@@ -163,6 +199,7 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
                   onPress={() => navigation.navigate('Stats', { familyId })}
                   style={styles.statsButton}
                   compact
+                  labelStyle={styles.statsButtonLabel}
                 >
                   통계
                 </Button>
@@ -225,17 +262,20 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
             </View>
           ) : (
             <View style={styles.membersContainer}>
-              <Text style={styles.debugText}>
-                DEBUG: selectedTab={selectedTab}, membersLoading={String(membersLoading)}, members={members?.length || 0}
-              </Text>
               <View style={styles.memberHeader}>
-                <Text style={styles.memberTitle}>가족 구성원</Text>
+                <Text style={styles.memberTitle}>
+                  가족 구성원 ({members.length}명)
+                </Text>
                 <Button
                   mode="contained"
                   icon="account-plus"
                   onPress={() => navigation.navigate('Invite', { familyId })}
                   style={styles.inviteButton}
                   compact
+                  buttonColor={colors.primary[500]}
+                  textColor="white"
+                  contentStyle={{ height: 36 }}
+                  labelStyle={{ fontSize: 14, fontWeight: '600' }}
                 >
                   초대
                 </Button>
@@ -281,10 +321,12 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     ...shadows.medium,
     overflow: 'hidden',
+    minHeight: 'auto',
   },
   statsContainer: {
-    marginTop: spacing[2],
-    paddingTop: spacing[2],
+    marginTop: spacing[3],
+    paddingTop: spacing[3],
+    paddingBottom: spacing[2],
     borderTopWidth: 1,
     borderTopColor: colors.border.medium,
   },
@@ -292,17 +334,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'nowrap',
+    gap: spacing[2],
   },
   totalAmountText: {
     ...textStyles.body1,
     fontWeight: '600',
-    color: colors.secondary[500], // Soft mint green for money
+    color: colors.secondary[500],
     flex: 1,
+    flexShrink: 1,
+    marginRight: spacing[2],
   },
   statsButton: {
-    borderColor: colors.accent[500], // Soft coral accent
-    borderRadius: 16,
-    paddingHorizontal: spacing[4],
+    borderColor: colors.accent[500],
+    borderRadius: spacing[4],
+    paddingHorizontal: spacing[3],
+    flexShrink: 0,
+    minWidth: 70,
+  },
+  statsButtonLabel: {
+    fontSize: 12,
+    marginHorizontal: 0,
   },
   tabContainer: {
     flexDirection: 'row',
@@ -403,16 +455,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing[4],
     paddingTop: spacing[4],
-    paddingBottom: spacing[2],
+    paddingBottom: spacing[3],
+    backgroundColor: colors.surface.primary,
   },
   memberTitle: {
     ...textStyles.h4,
     fontSize: spacing[4],
   },
   inviteButton: {
-    borderRadius: spacing[4],
+    borderRadius: spacing[3],
     backgroundColor: colors.primary[500],
-    paddingHorizontal: spacing[4],
+    minWidth: 80,
+    height: 36,
   },
   membersList: {
     flex: 1,
@@ -422,5 +476,14 @@ const styles = StyleSheet.create({
     color: colors.error,
     padding: spacing[2],
     backgroundColor: colors.background.tertiary,
+  },
+  newMemberBadge: {
+    backgroundColor: colors.accent[500],
+    marginBottom: spacing[1],
+  },
+  newMemberItem: {
+    backgroundColor: colors.accent[50],
+    borderLeftWidth: 3,
+    borderLeftColor: colors.accent[500],
   },
 });

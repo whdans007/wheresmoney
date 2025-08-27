@@ -64,14 +64,25 @@ export default function HomeScreen({ navigation }: Props) {
         </Card.Content>
       </Card>
 
-      <Button
-        mode="contained"
-        onPress={() => navigation.navigate('CreateFamily')}
-        style={styles.createButton}
-        icon="plus"
-      >
-        새 가족방 만들기
-      </Button>
+      <View style={styles.buttonContainer}>
+        <Button
+          mode="contained"
+          onPress={() => navigation.navigate('CreateFamily')}
+          style={styles.actionButton}
+          icon="plus"
+        >
+          새 가족방 만들기
+        </Button>
+        
+        <Button
+          mode="outlined"
+          onPress={() => navigation.navigate('JoinFamily')}
+          style={styles.actionButton}
+          icon="account-plus"
+        >
+          가족방 참여
+        </Button>
+      </View>
 
       <Card style={styles.familiesCard}>
         <Card.Content>
@@ -109,8 +120,13 @@ const styles = StyleSheet.create({
   welcomeCard: {
     marginBottom: 20,
   },
-  createButton: {
+  buttonContainer: {
+    flexDirection: 'row',
+    gap: 10,
     marginBottom: 20,
+  },
+  actionButton: {
+    flex: 1,
     paddingVertical: 8,
   },
   familiesCard: {

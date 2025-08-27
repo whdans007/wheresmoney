@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Alert, Share, Dimensions } from 'react-native';
+import { View, StyleSheet, Alert, Share, Dimensions, Clipboard } from 'react-native';
 import { 
   Text, 
   Button, 
@@ -26,6 +26,7 @@ interface Props {
 export default function InviteScreen({ navigation, route }: Props) {
   const { familyId } = route.params;
   const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [joinCode, setJoinCode] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
@@ -49,20 +50,44 @@ export default function InviteScreen({ navigation, route }: Props) {
       if (result.success && result.code) {
         console.log('Successfully generated invite code:', result.code);
         setInviteCode(result.code);
+        setExpiresAt(result.expiresAt || null);
       } else {
         console.log('No code returned despite success');
         console.error('Full result object:', result);
         setInviteCode(null);
+        setExpiresAt(null);
         Alert.alert('오류', '초대 코드 생성에 실패했습니다.');
       }
     } catch (error) {
       console.error('Generate invite code error:', error);
       setInviteCode(null);
+      setExpiresAt(null);
       Alert.alert('오류', '초대 코드 생성 중 오류가 발생했습니다.');
     } finally {
       setIsGenerating(false);
       setHasLoaded(true);
     }
+  };
+
+  const copyInviteCode = () => {
+    if (inviteCode) {
+      Clipboard.setString(inviteCode);
+      Alert.alert('복사 완료', '초대 코드가 클립보드에 복사되었습니다.');
+    }
+  };
+
+  const formatExpiresAt = (expiresAtString: string): string => {
+    const expiresDate = new Date(expiresAtString);
+    const now = new Date();
+    const diffMs = expiresDate.getTime() - now.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (diffMs <= 0) {
+      return '만료됨';
+    }
+    
+    return `${diffHours}시간 ${diffMinutes}분 후 만료`;
   };
 
   const shareInviteCode = async () => {
@@ -153,7 +178,24 @@ export default function InviteScreen({ navigation, route }: Props) {
                   </Text>
                 </View>
                 
-                <Text style={styles.codeText}>초대 코드: {inviteCode}</Text>
+                <View style={styles.codeContainer}>
+                  <Text style={styles.codeText}>초대 코드: {inviteCode}</Text>
+                  <Button
+                    mode="outlined"
+                    onPress={copyInviteCode}
+                    icon="content-copy"
+                    compact
+                    style={styles.copyButton}
+                  >
+                    복사
+                  </Button>
+                </View>
+                
+                {expiresAt && (
+                  <Text style={styles.expiresText}>
+                    {formatExpiresAt(expiresAt)}
+                  </Text>
+                )}
                 
                 <View style={styles.buttonContainer}>
                   <Button
@@ -201,9 +243,10 @@ export default function InviteScreen({ navigation, route }: Props) {
               value={joinCode}
               onChangeText={setJoinCode}
               mode="outlined"
-              placeholder="초대 코드를 입력하세요"
+              placeholder="6자리 숫자를 입력하세요"
               style={styles.input}
-              autoCapitalize="characters"
+              keyboardType="numeric"
+              maxLength={6}
             />
 
             <Button
@@ -272,14 +315,32 @@ const styles = StyleSheet.create({
     color: '#999',
     fontSize: 16,
   },
+  codeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
   codeText: {
-    fontSize: 16,
+    fontSize: 18,
     fontFamily: 'monospace',
-    marginBottom: 16,
+    fontWeight: 'bold',
     textAlign: 'center',
     backgroundColor: '#f0f0f0',
-    padding: 8,
-    borderRadius: 4,
+    padding: 12,
+    borderRadius: 8,
+    flex: 1,
+    color: '#2196F3',
+  },
+  copyButton: {
+    borderColor: '#2196F3',
+  },
+  expiresText: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 16,
   },
   buttonContainer: {
     width: '100%',

@@ -5,6 +5,7 @@ import { HomeStackParamList } from '../types';
 // Import screens (will create these)
 import HomeScreen from '../screens/home/HomeScreen';
 import CreateFamilyScreen from '../screens/family/CreateFamilyScreen';
+import JoinFamilyScreen from '../screens/family/JoinFamilyScreen';
 import FamilyDetailScreen from '../screens/family/FamilyDetailScreen';
 import AddLedgerEntryScreen from '../screens/ledger/AddLedgerEntryScreen';
 import LedgerDetailScreen from '../screens/ledger/LedgerDetailScreen';
@@ -25,6 +26,11 @@ export default function HomeNavigator() {
         name="CreateFamily" 
         component={CreateFamilyScreen}
         options={{ title: '가족방 만들기' }}
+      />
+      <Stack.Screen 
+        name="JoinFamily" 
+        component={JoinFamilyScreen}
+        options={{ title: '가족방 참여', headerShown: false }}
       />
       <Stack.Screen 
         name="FamilyDetail" 
