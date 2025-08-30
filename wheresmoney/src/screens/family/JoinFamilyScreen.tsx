@@ -11,6 +11,8 @@ import {
 import { StackNavigationProp } from '@react-navigation/stack';
 import { HomeStackParamList } from '../../types';
 import { FamilyMembersService } from '../../services/familyMembers';
+import { FamilyService } from '../../services/family';
+import { useFamilyStore } from '../../stores/familyStore';
 import { colors, spacing, shadows, textStyles } from '../../theme';
 
 type JoinFamilyScreenNavigationProp = StackNavigationProp<HomeStackParamList, 'JoinFamily'>;
@@ -22,6 +24,7 @@ interface Props {
 export default function JoinFamilyScreen({ navigation }: Props) {
   const [joinCode, setJoinCode] = useState<string>('');
   const [isJoining, setIsJoining] = useState(false);
+  const { setFamilies } = useFamilyStore();
 
   const joinFamily = async () => {
     if (!joinCode.trim()) {
@@ -40,10 +43,23 @@ export default function JoinFamilyScreen({ navigation }: Props) {
       
       console.log('Join family result:', result);
       
-      if (result.error) {
+      if (!result.success || result.error) {
         console.error('Join family error:', result.error);
-        Alert.alert('참여 실패', `${result.error}\n\n디버그 정보:\n- 입력 코드: ${joinCode}\n- 응답: ${JSON.stringify(result)}`);
+        Alert.alert('참여 실패', result.error || '가족방 참여에 실패했습니다.');
+      } else if (!result.familyId) {
+        console.error('Join successful but no familyId provided');
+        Alert.alert('오류', '가족방 정보를 불러올 수 없습니다.');
       } else {
+        // 가족 목록을 다시 로드하여 store 업데이트
+        try {
+          const familiesResult = await FamilyService.getUserFamilies();
+          if (familiesResult.families) {
+            setFamilies(familiesResult.families);
+          }
+        } catch (error) {
+          console.error('가족 목록 업데이트 실패:', error);
+        }
+
         Alert.alert(
           '참여 완료! 🎉', 
           '가족방에 성공적으로 참여했습니다!\n가족 구성원을 확인해보세요.',
@@ -58,8 +74,9 @@ export default function JoinFamilyScreen({ navigation }: Props) {
     } catch (error) {
       console.log('Join family error:', error);
       Alert.alert('오류', '가족방 참여 중 오류가 발생했습니다.');
+    } finally {
+      setIsJoining(false);
     }
-    setIsJoining(false);
   };
 
   const handleCodeChange = (text: string) => {

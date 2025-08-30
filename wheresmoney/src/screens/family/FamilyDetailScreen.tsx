@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, FlatList, Image, LinearGradient } from 'react-native';
+import { View, StyleSheet, FlatList, Image, Alert } from 'react-native';
 import { 
   Text, 
   Button, 
@@ -20,6 +20,8 @@ import { LedgerService } from '../../services/ledger';
 import { DEFAULT_CATEGORIES } from '../../constants/categories';
 import { useFamilyStore } from '../../stores/familyStore';
 import { FamilyMembersService } from '../../services/familyMembers';
+import { FamilyService } from '../../services/family';
+import { supabase } from '../../services/supabase';
 
 type FamilyDetailScreenRouteProp = RouteProp<HomeStackParamList, 'FamilyDetail'>;
 type FamilyDetailScreenNavigationProp = StackNavigationProp<HomeStackParamList, 'FamilyDetail'>;
@@ -38,8 +40,10 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
   const [membersLoading, setMembersLoading] = useState(false);
   const [totalAmount, setTotalAmount] = useState(0);
   const [displayName, setDisplayName] = useState<string>('');
+  const [currentUserId, setCurrentUserId] = useState<string>('');
+  const [isOwner, setIsOwner] = useState(false);
   
-  const { families } = useFamilyStore();
+  const { families, setFamilies } = useFamilyStore();
   const family = families.find(f => f.id === familyId);
 
   const loadLedgerEntries = async () => {
@@ -63,14 +67,32 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
   };
 
   const loadMembers = async () => {
+    console.log('=== loadMembers started ===');
+    console.log('Family ID:', familyId);
     setMembersLoading(true);
     try {
       const result = await FamilyMembersService.getFamilyMembers(familyId);
+      console.log('=== getFamilyMembers result ===');
+      console.log('Success:', result.success);
+      console.log('Members count:', result.members?.length);
+      console.log('Members data:', JSON.stringify(result.members, null, 2));
+      console.log('Error:', result.error);
+      
       if (result.success && result.members) {
-        // 참여일 기준으로 최신순 정렬 (최신 참여자가 위로)
-        const sortedMembers = result.members.sort((a: any, b: any) => 
-          new Date(b.joined_at).getTime() - new Date(a.joined_at).getTime()
-        );
+        // 등록된 순서대로 정렬 (joined_at 오름차순 - 먼저 등록한 사람이 위에)
+        const sortedMembers = result.members.sort((a: any, b: any) => {
+          return new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime();
+        });
+        
+        console.log('=== Sorted members ===');
+        console.log('Sorted count:', sortedMembers.length);
+        console.log('Sorted data:', sortedMembers.map(m => ({ 
+          id: m.id, 
+          role: m.role, 
+          nickname: m.users?.nickname,
+          user_id: m.user_id,
+          joined_at: m.joined_at
+        })));
         setMembers(sortedMembers);
         
         // 가족방 이름 동적 생성
@@ -91,18 +113,136 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
         }
       } else {
         console.error('가족 구성원 로딩 실패:', result.error);
+        setMembers([]);
         setDisplayName(family?.name || '가족방');
       }
     } catch (error) {
       console.error('가족 구성원 로딩 예외:', error);
+      setMembers([]);
+      setDisplayName(family?.name || '가족방');
     } finally {
       setMembersLoading(false);
     }
   };
 
+  // 현재 사용자 정보 가져오기
+  const getCurrentUser = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+        // 방장인지 확인
+        setIsOwner(family?.owner_id === user.id || false);
+      }
+    } catch (error) {
+      console.error('사용자 정보 로딩 실패:', error);
+    }
+  };
+
+  // 가족방 탈퇴
+  const leaveFamily = async () => {
+    Alert.alert(
+      '가족방 탈퇴',
+      '정말로 이 가족방에서 탈퇴하시겠습니까?',
+      [
+        {
+          text: '취소',
+          style: 'cancel'
+        },
+        {
+          text: '탈퇴',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const result = await FamilyMembersService.leaveFamily(familyId);
+              if (result.success) {
+                Alert.alert(
+                  '탈퇴 완료',
+                  '가족방에서 성공적으로 탈퇴했습니다.',
+                  [
+                    {
+                      text: '확인',
+                      onPress: () => {
+                        // 가족 목록 새로고침 후 홈으로 이동
+                        const updatedFamilies = families.filter(f => f.id !== familyId);
+                        setFamilies(updatedFamilies);
+                        navigation.navigate('HomeScreen');
+                      }
+                    }
+                  ]
+                );
+              } else {
+                Alert.alert('탈퇴 실패', result.error || '탈퇴 중 오류가 발생했습니다.');
+              }
+            } catch (error) {
+              Alert.alert('오류', '가족방 탈퇴 중 오류가 발생했습니다.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  // 가족방 삭제 (방장만 가능)
+  const deleteFamily = async () => {
+    Alert.alert(
+      '가족방 삭제',
+      '정말로 이 가족방을 삭제하시겠습니까?\n\n⚠️ 이 작업은 되돌릴 수 없으며, 모든 가계부 기록도 함께 삭제됩니다.',
+      [
+        {
+          text: '취소',
+          style: 'cancel'
+        },
+        {
+          text: '삭제',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              console.log('Starting family deletion:', familyId);
+              const result = await FamilyService.deleteFamily(familyId);
+              console.log('Delete family result:', result);
+              if (result.success) {
+                Alert.alert(
+                  '삭제 완료',
+                  '가족방이 성공적으로 삭제되었습니다.',
+                  [
+                    {
+                      text: '확인',
+                      onPress: async () => {
+                        // 가족 목록 새로고침
+                        try {
+                          const familiesResult = await FamilyService.getUserFamilies();
+                          console.log('Family list refresh after deletion:', familiesResult);
+                          if (familiesResult.families) {
+                            setFamilies(familiesResult.families);
+                          }
+                        } catch (error) {
+                          console.error('가족 목록 새로고침 실패:', error);
+                          // 에러가 발생해도 로컬 상태는 업데이트
+                          const updatedFamilies = families.filter(f => f.id !== familyId);
+                          setFamilies(updatedFamilies);
+                        }
+                        navigation.navigate('HomeScreen');
+                      }
+                    }
+                  ]
+                );
+              } else {
+                Alert.alert('삭제 실패', result.error || '가족방 삭제 중 오류가 발생했습니다.');
+              }
+            } catch (error) {
+              Alert.alert('오류', '가족방 삭제 중 오류가 발생했습니다.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   // 화면 포커스될 때마다 데이터 새로고침
   useFocusEffect(
     React.useCallback(() => {
+      getCurrentUser();
       loadLedgerEntries();
       loadMembers();
     }, [familyId])
@@ -148,15 +288,23 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
     // 최근 5분 이내 참여한 사용자는 "새로운 멤버"로 표시
     const isNewMember = new Date().getTime() - new Date(item.joined_at).getTime() < 5 * 60 * 1000;
     
+    // 현재 사용자인지 확인
+    const isCurrentUser = item.user_id === currentUserId;
+    
+    // 표시될 이름 결정
+    const displayName = isCurrentUser 
+      ? '나' 
+      : (item.users?.nickname || '사용자');
+    
     return (
       <List.Item
-        title={item.users?.nickname || '사용자'}
-        description={item.users?.email}
+        title={displayName}
+        description={item.users?.email || '이메일 없음'}
         left={(props) => (
           item.users?.avatar_url ? (
             <Image source={{ uri: item.users.avatar_url }} style={styles.memberAvatar} />
           ) : (
-            <List.Icon {...props} icon="account" />
+            <List.Icon {...props} icon={isCurrentUser ? "account-circle" : "account"} />
           )
         )}
         right={() => (
@@ -167,12 +315,21 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
             {item.role === 'owner' && (
               <Badge style={styles.ownerBadge}>방장</Badge>
             )}
-            <Text style={styles.joinedDateText}>
-              {new Date(item.joined_at).toLocaleDateString('ko-KR')}
-            </Text>
+            <View style={styles.joinedDateContainer}>
+              <Text style={styles.joinedDateText}>
+                {new Date(item.joined_at).toLocaleDateString('ko-KR', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric'
+                })}
+              </Text>
+            </View>
           </View>
         )}
-        style={isNewMember ? styles.newMemberItem : undefined}
+        style={[
+          isNewMember ? styles.newMemberItem : styles.memberItem,
+          { backgroundColor: colors.surface.primary }
+        ]}
       />
     );
   };
@@ -233,69 +390,104 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
       </View>
 
       <Card style={styles.contentCard}>
-        {selectedTab === 'ledger' ? (
-          loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" />
-              <Text style={styles.loadingText}>가계부 로딩 중...</Text>
-            </View>
-          ) : (
-            <FlatList
-              data={ledgerEntries}
-              renderItem={renderLedgerItem}
-              keyExtractor={(item) => item.id}
-              onRefresh={loadLedgerEntries}
-              refreshing={loading}
-              ListEmptyComponent={
-                <Text style={styles.emptyText}>
-                  아직 가계부 내역이 없습니다.{'\n'}
-                  첫 번째 내역을 추가해보세요!
-                </Text>
-              }
-            />
-          )
-        ) : (
-          membersLoading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" />
-              <Text style={styles.loadingText}>구성원 로딩 중...</Text>
-            </View>
-          ) : (
-            <View style={styles.membersContainer}>
-              <View style={styles.memberHeader}>
-                <Text style={styles.memberTitle}>
-                  가족 구성원 ({members.length}명)
-                </Text>
-                <Button
-                  mode="contained"
-                  icon="account-plus"
-                  onPress={() => navigation.navigate('Invite', { familyId })}
-                  style={styles.inviteButton}
-                  compact
-                  buttonColor={colors.primary[500]}
-                  textColor="white"
-                  contentStyle={{ height: 36 }}
-                  labelStyle={{ fontSize: 14, fontWeight: '600' }}
-                >
-                  초대
-                </Button>
+        <View style={styles.cardContentStyle}>
+          {selectedTab === 'ledger' ? (
+            loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" />
+                <Text style={styles.loadingText}>가계부 로딩 중...</Text>
               </View>
+            ) : (
               <FlatList
-                data={members}
-                renderItem={renderMemberItem}
+                data={ledgerEntries}
+                renderItem={renderLedgerItem}
                 keyExtractor={(item) => item.id}
-                onRefresh={loadMembers}
-                refreshing={membersLoading}
-                style={styles.membersList}
+                onRefresh={loadLedgerEntries}
+                refreshing={loading}
                 ListEmptyComponent={
                   <Text style={styles.emptyText}>
-                    가족 구성원이 없습니다.
+                    아직 가계부 내역이 없습니다.{'\n'}
+                    첫 번째 내역을 추가해보세요!
                   </Text>
                 }
               />
-            </View>
-          )
-        )}
+            )
+          ) : (
+            membersLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" />
+                <Text style={styles.loadingText}>구성원 로딩 중...</Text>
+              </View>
+            ) : (
+              <View style={styles.membersContainer}>
+                <View style={styles.memberHeader}>
+                  <Text style={styles.memberTitle}>
+                    가족 구성원 ({members.length}명)
+                  </Text>
+                  {isOwner ? (
+                    <View style={styles.ownerButtonsContainer}>
+                      <Button
+                        mode="contained"
+                        icon="account-plus"
+                        onPress={() => navigation.navigate('Invite', { familyId })}
+                        style={styles.inviteButton}
+                        compact
+                        buttonColor={colors.primary[500]}
+                        textColor="white"
+                        contentStyle={{ height: 36 }}
+                        labelStyle={{ fontSize: 14, fontWeight: '600' }}
+                      >
+                        초대
+                      </Button>
+                      <Button
+                        mode="contained"
+                        icon="delete"
+                        onPress={deleteFamily}
+                        style={styles.deleteButton}
+                        compact
+                        buttonColor={colors.error}
+                        textColor="white"
+                        contentStyle={{ height: 36 }}
+                        labelStyle={{ fontSize: 14, fontWeight: '600' }}
+                      >
+                        삭제
+                      </Button>
+                    </View>
+                  ) : (
+                    <Button
+                      mode="outlined"
+                      icon="exit-to-app"
+                      onPress={leaveFamily}
+                      style={styles.leaveButton}
+                      compact
+                      buttonColor="transparent"
+                      textColor={colors.error}
+                      contentStyle={{ height: 36 }}
+                      labelStyle={{ fontSize: 14, fontWeight: '600' }}
+                    >
+                      탈퇴
+                    </Button>
+                  )}
+                </View>
+                <FlatList
+                  data={members}
+                  renderItem={renderMemberItem}
+                  keyExtractor={(item) => item.id}
+                  onRefresh={loadMembers}
+                  refreshing={membersLoading}
+                  style={styles.membersList}
+                  contentContainerStyle={{ flexGrow: 1 }}
+                  showsVerticalScrollIndicator={false}
+                  ListEmptyComponent={
+                    <Text style={styles.emptyText}>
+                      가족 구성원이 없습니다.
+                    </Text>
+                  }
+                />
+              </View>
+            )
+          )}
+        </View>
       </Card>
 
       {selectedTab === 'ledger' && (
@@ -373,6 +565,10 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing[5],
     marginBottom: spacing[5],
   },
+  cardContentStyle: {
+    flex: 1,
+    padding: spacing[4],
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -430,12 +626,18 @@ const styles = StyleSheet.create({
   memberRightContainer: {
     alignItems: 'flex-end',
     justifyContent: 'center',
+    minHeight: 60, // 충분한 높이 확보
+  },
+  joinedDateContainer: {
+    minHeight: 20, // 날짜 텍스트를 위한 충분한 공간
+    justifyContent: 'center',
+    marginTop: spacing[1],
   },
   joinedDateText: {
     ...textStyles.caption,
-    fontSize: 11,
+    fontSize: 12, // 조금 더 크게
     color: colors.text.secondary,
-    marginTop: spacing[1],
+    lineHeight: 16, // 줄 높이 명시적으로 설정
   },
   fab: {
     position: 'absolute',
@@ -453,10 +655,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[4],
     paddingBottom: spacing[3],
-    backgroundColor: colors.surface.primary,
+    marginBottom: spacing[2],
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.light,
   },
   memberTitle: {
     ...textStyles.h4,
@@ -468,8 +670,25 @@ const styles = StyleSheet.create({
     minWidth: 80,
     height: 36,
   },
+  leaveButton: {
+    borderRadius: spacing[3],
+    borderColor: colors.error,
+    minWidth: 80,
+    height: 36,
+  },
+  ownerButtonsContainer: {
+    flexDirection: 'row',
+    gap: spacing[2],
+  },
+  deleteButton: {
+    borderRadius: spacing[3],
+    backgroundColor: colors.error,
+    minWidth: 60,
+    height: 36,
+  },
   membersList: {
     flex: 1,
+    minHeight: 200,
   },
   debugText: {
     ...textStyles.caption,
@@ -485,5 +704,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent[50],
     borderLeftWidth: 3,
     borderLeftColor: colors.accent[500],
+  },
+  memberItem: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.light,
   },
 });

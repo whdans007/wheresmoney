@@ -82,7 +82,7 @@ export default function SignUpScreen({ navigation }: Props) {
           <Text style={styles.subtitle}>가족 가계부에 참여하세요</Text>
 
           <TextInput
-            label="닉네임"
+            label="이름"
             value={nickname}
             onChangeText={setNickname}
             style={styles.input}

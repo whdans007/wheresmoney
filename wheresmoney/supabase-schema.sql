@@ -14,6 +14,7 @@ CREATE TABLE families (
   name TEXT NOT NULL,
   description TEXT,
   owner_id UUID REFERENCES users(id) NOT NULL,
+  invite_code TEXT UNIQUE NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

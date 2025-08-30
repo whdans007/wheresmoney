@@ -9,13 +9,42 @@ export class FamilyService {
 
       console.log('Creating family for user:', { userId: user.id, name, description });
 
-      // Create family
+      // Generate unique 6-digit invite code
+      let inviteCode: string;
+      let isUnique = false;
+      let attempts = 0;
+      const maxAttempts = 10;
+
+      while (!isUnique && attempts < maxAttempts) {
+        inviteCode = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        // Check if code already exists
+        const { data: existingFamily } = await supabase
+          .from('families')
+          .select('id')
+          .eq('invite_code', inviteCode)
+          .single();
+
+        if (!existingFamily) {
+          isUnique = true;
+        }
+        attempts++;
+      }
+
+      if (!isUnique) {
+        throw new Error('초대 코드 생성에 실패했습니다. 다시 시도해주세요.');
+      }
+
+      console.log('Generated invite code:', inviteCode);
+
+      // Create family with invite code
       const { data: family, error: familyError } = await supabase
         .from('families')
         .insert({
           name,
           description,
           owner_id: user.id,
+          invite_code: inviteCode,
         })
         .select()
         .single();
@@ -227,6 +256,210 @@ export class FamilyService {
       return { error: null };
     } catch (error: any) {
       return { error: error.message };
+    }
+  }
+
+  static async deleteFamily(familyId: string) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      console.log('Deleting family for user:', { userId: user.id, familyId });
+
+      // 가족방 소유자인지 확인
+      const { data: family, error: familyError } = await supabase
+        .from('families')
+        .select('owner_id')
+        .eq('id', familyId)
+        .single();
+
+      console.log('Family check result:', { family, familyError });
+
+      if (familyError) {
+        throw new Error(`가족방 정보 조회 실패: ${familyError.message}`);
+      }
+
+      if (!family) {
+        throw new Error('가족방을 찾을 수 없습니다.');
+      }
+
+      if (family.owner_id !== user.id) {
+        throw new Error('가족방 소유자만 삭제할 수 있습니다.');
+      }
+
+      // 1. 먼저 ledger_entries 삭제
+      console.log('Deleting ledger entries...');
+      const { error: ledgerDeleteError } = await supabase
+        .from('ledger_entries')
+        .delete()
+        .eq('family_id', familyId);
+
+      console.log('Ledger entries deletion result:', { ledgerDeleteError });
+      // ledger_entries는 존재하지 않을 수 있으므로 에러를 무시
+
+      // 2. invite_codes 삭제
+      console.log('Deleting invite codes...');
+      const { error: inviteCodesDeleteError } = await supabase
+        .from('invite_codes')
+        .delete()
+        .eq('family_id', familyId);
+
+      console.log('Invite codes deletion result:', { inviteCodesDeleteError });
+      // invite_codes도 존재하지 않을 수 있으므로 에러를 무시
+
+      // 3. family_members에서 모든 구성원 삭제
+      console.log('Deleting family members...');
+      const { error: membersDeleteError } = await supabase
+        .from('family_members')
+        .delete()
+        .eq('family_id', familyId);
+
+      console.log('Family members deletion result:', { membersDeleteError });
+
+      if (membersDeleteError) {
+        throw new Error(`가족 구성원 삭제 실패: ${membersDeleteError.message}`);
+      }
+
+      // 4. 마지막으로 families 테이블에서 가족방 삭제
+      console.log('Deleting family record...');
+      const { data: deletedData, error: deleteError } = await supabase
+        .from('families')
+        .delete()
+        .eq('id', familyId)
+        .eq('owner_id', user.id) // 안전을 위한 이중 체크
+        .select(); // 삭제된 데이터 반환
+
+      console.log('Family deletion result:', { deletedData, deleteError, familyId, userId: user.id });
+
+      if (deleteError) {
+        throw new Error(`가족방 삭제 실패: ${deleteError.message}`);
+      }
+
+      return { success: true, error: null };
+    } catch (error: any) {
+      console.error('Delete family error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  static async getFamilyInviteCode(familyId: string) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      // 가족방 소유자인지 확인하고 invite_code 가져오기
+      const { data: family, error: familyError } = await supabase
+        .from('families')
+        .select('owner_id, invite_code')
+        .eq('id', familyId)
+        .single();
+
+      if (familyError) throw familyError;
+
+      if (!family || family.owner_id !== user.id) {
+        throw new Error('가족방 소유자만 초대 코드를 볼 수 있습니다.');
+      }
+
+      return { 
+        inviteCode: family.invite_code, 
+        error: null 
+      };
+    } catch (error: any) {
+      console.error('Get family invite code error:', error);
+      return { 
+        inviteCode: null, 
+        error: error.message 
+      };
+    }
+  }
+
+  static async generateNewInviteCode(familyId: string) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      console.log('Generating new invite code for family:', familyId, 'user:', user.id);
+
+      // 가족방 소유자인지 확인
+      const { data: family, error: familyError } = await supabase
+        .from('families')
+        .select('owner_id, name')
+        .eq('id', familyId)
+        .single();
+
+      if (familyError) throw familyError;
+
+      if (!family || family.owner_id !== user.id) {
+        throw new Error('가족방 소유자만 초대 코드를 생성할 수 있습니다.');
+      }
+
+      // 새로운 고유한 6자리 코드 생성
+      let newInviteCode: string;
+      let isUnique = false;
+      let attempts = 0;
+      const maxAttempts = 10;
+
+      while (!isUnique && attempts < maxAttempts) {
+        newInviteCode = Math.floor(100000 + Math.random() * 900000).toString();
+        console.log('Trying new code:', newInviteCode);
+        
+        // 중복 확인
+        const { data: existingFamily } = await supabase
+          .from('families')
+          .select('id')
+          .eq('invite_code', newInviteCode)
+          .single();
+
+        if (!existingFamily) {
+          isUnique = true;
+        }
+        attempts++;
+      }
+
+      if (!isUnique) {
+        throw new Error('새로운 초대 코드 생성에 실패했습니다. 다시 시도해주세요.');
+      }
+
+      console.log('Generated new unique code:', newInviteCode!);
+
+      // 새로운 코드로 업데이트
+      console.log('Updating families table with new invite code:', {
+        familyId,
+        newInviteCode: newInviteCode!,
+        userId: user.id
+      });
+
+      const { data: updateResult, error: updateError } = await supabase
+        .from('families')
+        .update({ invite_code: newInviteCode! })
+        .eq('id', familyId)
+        .eq('owner_id', user.id) // 안전을 위한 이중 체크
+        .select('id, name, invite_code');
+
+      console.log('Update result:', { updateResult, updateError });
+
+      if (updateError) {
+        console.error('Failed to update invite code:', updateError);
+        throw updateError;
+      }
+
+      if (!updateResult || updateResult.length === 0) {
+        console.error('No rows were updated - possible permission issue');
+        throw new Error('초대 코드 업데이트에 실패했습니다. 권한을 확인해주세요.');
+      }
+
+      console.log('Successfully updated invite code. Result:', updateResult[0]);
+
+      return { 
+        inviteCode: newInviteCode!, 
+        error: null 
+      };
+    } catch (error: any) {
+      console.error('Generate new invite code error:', error);
+      return { 
+        inviteCode: null, 
+        error: error.message 
+      };
     }
   }
 }

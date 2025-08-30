@@ -14,6 +14,7 @@ import { RouteProp } from '@react-navigation/native';
 // import QRCode from 'react-native-qrcode-svg'; // 임시 비활성화
 import { HomeStackParamList } from '../../types';
 import { FamilyMembersService } from '../../services/familyMembers';
+import { FamilyService } from '../../services/family';
 
 type InviteScreenNavigationProp = StackNavigationProp<HomeStackParamList, 'Invite'>;
 type InviteScreenRouteProp = RouteProp<HomeStackParamList, 'Invite'>;
@@ -26,46 +27,104 @@ interface Props {
 export default function InviteScreen({ navigation, route }: Props) {
   const { familyId } = route.params;
   const [inviteCode, setInviteCode] = useState<string | null>(null);
-  const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [joinCode, setJoinCode] = useState<string>('');
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [familyName, setFamilyName] = useState<string>('');
+  const [isGeneratingNew, setIsGeneratingNew] = useState(false);
 
-  const generateInviteCode = async () => {
-    setIsGenerating(true);
+  const loadFamilyInfo = async () => {
+    setIsLoading(true);
     try {
-      console.log('Generating invite code for family:', familyId);
-      const result = await FamilyMembersService.createInviteCode(familyId);
-      console.log('Invite code result:', result);
+      console.log('Loading family info for family:', familyId);
       
-      if (result.error) {
-        console.log('Error generating invite code:', result.error);
-        console.error('Full error result:', result);
-        setInviteCode(null);
-        Alert.alert('오류', `초대 코드 생성에 실패했습니다: ${result.error}`);
-        return; // 에러 시 early return
+      // 가족방 정보와 초대 코드 동시 로드
+      const [inviteResult, familyResult] = await Promise.all([
+        FamilyService.getFamilyInviteCode(familyId),
+        FamilyService.getFamilyDetails(familyId)
+      ]);
+      
+      console.log('Invite code result:', inviteResult);
+      console.log('Family details result:', familyResult);
+      
+      // 가족방 이름 설정
+      if (familyResult.family?.name) {
+        setFamilyName(familyResult.family.name);
       }
       
-      if (result.success && result.code) {
-        console.log('Successfully generated invite code:', result.code);
-        setInviteCode(result.code);
-        setExpiresAt(result.expiresAt || null);
-      } else {
-        console.log('No code returned despite success');
-        console.error('Full result object:', result);
+      // 초대 코드 설정
+      if (inviteResult.error) {
+        console.log('Error loading invite code:', inviteResult.error);
         setInviteCode(null);
-        setExpiresAt(null);
-        Alert.alert('오류', '초대 코드 생성에 실패했습니다.');
+        Alert.alert('오류', `초대 코드 조회에 실패했습니다: ${inviteResult.error}`);
+        return;
+      }
+      
+      if (inviteResult.inviteCode) {
+        console.log('Successfully loaded invite code:', inviteResult.inviteCode);
+        setInviteCode(inviteResult.inviteCode);
+      } else {
+        console.log('No invite code returned');
+        setInviteCode(null);
+        Alert.alert('오류', '초대 코드를 찾을 수 없습니다.');
       }
     } catch (error) {
-      console.error('Generate invite code error:', error);
+      console.error('Load family info error:', error);
       setInviteCode(null);
-      setExpiresAt(null);
-      Alert.alert('오류', '초대 코드 생성 중 오류가 발생했습니다.');
+      Alert.alert('오류', '가족방 정보 조회 중 오류가 발생했습니다.');
     } finally {
-      setIsGenerating(false);
+      setIsLoading(false);
       setHasLoaded(true);
+    }
+  };
+
+  const generateNewInviteCode = async () => {
+    setIsGeneratingNew(true);
+    try {
+      console.log('Generating new invite code for family:', familyId);
+      
+      // 사용자에게 확인 받기
+      Alert.alert(
+        '새 초대 코드 생성',
+        `${familyName} 가족방의 새로운 초대 코드를 생성하시겠습니까?\n\n⚠️ 기존 코드는 더 이상 사용할 수 없게 됩니다.`,
+        [
+          {
+            text: '취소',
+            style: 'cancel'
+          },
+          {
+            text: '생성',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                const result = await FamilyService.generateNewInviteCode(familyId);
+                
+                if (result.error) {
+                  console.error('New invite code generation failed:', result.error);
+                  Alert.alert('오류', `새 초대 코드 생성에 실패했습니다: ${result.error}`);
+                } else if (result.inviteCode) {
+                  console.log('New invite code generated:', result.inviteCode);
+                  setInviteCode(result.inviteCode);
+                  Alert.alert(
+                    '성공',
+                    `새로운 초대 코드가 생성되었습니다!\n\n새 코드: ${result.inviteCode}`,
+                    [{ text: '확인' }]
+                  );
+                }
+              } catch (error) {
+                console.error('Generate new code error:', error);
+                Alert.alert('오류', '새 초대 코드 생성 중 오류가 발생했습니다.');
+              }
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Generate new invite code error:', error);
+      Alert.alert('오류', '새 초대 코드 생성 중 오류가 발생했습니다.');
+    } finally {
+      setIsGeneratingNew(false);
     }
   };
 
@@ -76,19 +135,6 @@ export default function InviteScreen({ navigation, route }: Props) {
     }
   };
 
-  const formatExpiresAt = (expiresAtString: string): string => {
-    const expiresDate = new Date(expiresAtString);
-    const now = new Date();
-    const diffMs = expiresDate.getTime() - now.getTime();
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-    
-    if (diffMs <= 0) {
-      return '만료됨';
-    }
-    
-    return `${diffHours}시간 ${diffMinutes}분 후 만료`;
-  };
 
   const shareInviteCode = async () => {
     if (!inviteCode) return;
@@ -104,34 +150,77 @@ export default function InviteScreen({ navigation, route }: Props) {
   };
 
   const joinFamily = async () => {
+    console.log('=== joinFamily function called ===');
+    console.log('Current joinCode:', joinCode);
+    console.log('joinCode trimmed:', joinCode.trim());
+    console.log('joinCode length:', joinCode.trim().length);
+    
     if (!joinCode.trim()) {
+      console.log('Empty join code, showing alert');
       Alert.alert('오류', '초대 코드를 입력해주세요.');
       return;
     }
 
+    console.log('Setting isJoining to true');
     setIsJoining(true);
+    
     try {
+      console.log('=== Starting join process ===');
+      console.log('Calling FamilyMembersService.joinFamilyByCode with code:', joinCode.trim());
+      
       const result = await FamilyMembersService.joinFamilyByCode(joinCode.trim());
+      console.log('=== Join result received ===');
+      console.log('Full result:', JSON.stringify(result, null, 2));
       
       if (result.error) {
-        Alert.alert('오류', `가족방 참여에 실패했습니다: ${result.error}`);
-      } else {
+        console.log('=== Join failed ===');
+        console.log('Error message:', result.error);
+        console.log('Family name:', result.familyName);
+        
+        const errorMessage = result.familyName 
+          ? `${result.familyName} 가족방 참여에 실패했습니다: ${result.error}`
+          : `가족방 참여에 실패했습니다: ${result.error}`;
+        
+        console.log('Showing error alert:', errorMessage);
+        Alert.alert('오류', errorMessage);
+      } else if (result.success) {
+        console.log('=== Join successful ===');
+        console.log('Family ID:', result.familyId);
+        console.log('Family name:', result.familyName);
+        
+        const successMessage = result.familyName
+          ? `${result.familyName} 가족방에 성공적으로 참여했습니다!`
+          : '가족방에 성공적으로 참여했습니다!';
+        
+        console.log('Showing success alert:', successMessage);
         Alert.alert(
           '성공', 
-          '가족방에 성공적으로 참여했습니다!',
+          successMessage,
           [
             {
               text: '확인',
-              onPress: () => navigation.goBack()
+              onPress: () => {
+                console.log('Success alert confirmed, navigating back');
+                navigation.goBack();
+              }
             }
           ]
         );
+      } else {
+        console.log('=== Unexpected result ===');
+        console.log('Result has no error but success is not true');
+        Alert.alert('오류', '알 수 없는 오류가 발생했습니다.');
       }
     } catch (error) {
-      console.log('Join family error:', error);
+      console.error('=== Join family exception ===');
+      console.error('Exception details:', error);
+      console.error('Exception stack:', error.stack);
       Alert.alert('오류', '가족방 참여 중 오류가 발생했습니다.');
+    } finally {
+      console.log('=== Finally block ===');
+      console.log('Setting isJoining to false');
+      setIsJoining(false);
     }
-    setIsJoining(false);
   };
 
   useEffect(() => {
@@ -145,30 +234,33 @@ export default function InviteScreen({ navigation, route }: Props) {
       return;
     }
     
-    generateInviteCode();
+    loadFamilyInfo();
   }, [familyId]);
 
   return (
     <View style={styles.container}>
       <Appbar.Header>
         <Appbar.BackAction onPress={() => navigation.goBack()} />
-        <Appbar.Content title="가족방 초대" />
+        <Appbar.Content title={familyName ? `${familyName} 초대` : "가족방 초대"} />
       </Appbar.Header>
 
       <View style={styles.content}>
         <Card style={styles.card}>
           <Card.Content>
             <Text variant="titleMedium" style={styles.sectionTitle}>
-              가족방 초대하기
+              {familyName ? `${familyName} 가족방 초대하기` : '가족방 초대하기'}
             </Text>
             <Paragraph style={styles.description}>
-              QR 코드를 스캔하거나 초대 코드를 공유하여 가족을 초대하세요.
+              {familyName 
+                ? `${familyName} 가족방의 초대 코드를 공유하여 새 멤버를 초대하세요.`
+                : '초대 코드를 공유하여 가족을 초대하세요.'
+              } 이 코드는 가족방이 삭제될 때까지 유효합니다.
             </Paragraph>
 
-            {!hasLoaded || isGenerating ? (
+            {!hasLoaded || isLoading ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" />
-                <Text style={styles.loadingText}>초대 코드 생성 중...</Text>
+                <Text style={styles.loadingText}>초대 코드 불러오는 중...</Text>
               </View>
             ) : inviteCode !== null && inviteCode !== '' ? (
               <View style={styles.inviteContainer}>
@@ -191,12 +283,6 @@ export default function InviteScreen({ navigation, route }: Props) {
                   </Button>
                 </View>
                 
-                {expiresAt && (
-                  <Text style={styles.expiresText}>
-                    {formatExpiresAt(expiresAt)}
-                  </Text>
-                )}
-                
                 <View style={styles.buttonContainer}>
                   <Button
                     mode="contained"
@@ -206,22 +292,35 @@ export default function InviteScreen({ navigation, route }: Props) {
                   >
                     초대 코드 공유
                   </Button>
-                  <Button
-                    mode="outlined"
-                    onPress={generateInviteCode}
-                    loading={isGenerating}
-                  >
-                    새 코드 생성
-                  </Button>
+                  <View style={styles.secondaryButtons}>
+                    <Button
+                      mode="outlined"
+                      onPress={loadFamilyInfo}
+                      loading={isLoading}
+                      style={styles.secondaryButton}
+                      icon="refresh"
+                    >
+                      새로고침
+                    </Button>
+                    <Button
+                      mode="outlined"
+                      onPress={generateNewInviteCode}
+                      loading={isGeneratingNew}
+                      style={[styles.secondaryButton, styles.generateButton]}
+                      icon="shuffle-variant"
+                    >
+                      새 코드 생성
+                    </Button>
+                  </View>
                 </View>
               </View>
             ) : (
               <View style={styles.errorContainer}>
                 <Text style={styles.errorText}>
-                  초대 코드 생성에 실패했습니다.{'\n'}
-                  콘솔에서 자세한 오류를 확인하세요.
+                  초대 코드를 불러올 수 없습니다.{'\n'}
+                  가족방 소유자만 초대 코드를 볼 수 있습니다.
                 </Text>
-                <Button mode="outlined" onPress={generateInviteCode}>
+                <Button mode="outlined" onPress={loadFamilyInfo}>
                   다시 시도
                 </Button>
               </View>
@@ -251,7 +350,14 @@ export default function InviteScreen({ navigation, route }: Props) {
 
             <Button
               mode="contained"
-              onPress={joinFamily}
+              onPress={() => {
+                console.log('=== Join button clicked ===');
+                console.log('isJoining:', isJoining);
+                console.log('joinCode:', joinCode);
+                console.log('joinCode.trim():', joinCode.trim());
+                console.log('Button disabled:', isJoining || !joinCode.trim());
+                joinFamily();
+              }}
               loading={isJoining}
               disabled={isJoining || !joinCode.trim()}
               style={styles.joinButton}
@@ -348,6 +454,16 @@ const styles = StyleSheet.create({
   },
   shareButton: {
     marginBottom: 8,
+  },
+  secondaryButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  secondaryButton: {
+    flex: 1,
+  },
+  generateButton: {
+    borderColor: '#FF6B6B',
   },
   errorContainer: {
     alignItems: 'center',
