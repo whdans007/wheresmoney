@@ -31,7 +31,7 @@ export class AuthService {
           .single();
 
         if (profileError) {
-          console.log('Profile fetch error:', profileError);
+          console.error('Profile fetch error:', profileError);
         }
 
         const user = {
@@ -55,8 +55,6 @@ export class AuthService {
 
   static async signUp(email: string, password: string, nickname: string) {
     try {
-      console.log(`회원가입 시도: ${email}`);
-
       // Supabase Auth로 회원가입 처리
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -69,10 +67,9 @@ export class AuthService {
         }
       });
 
-      console.log('SignUp result:', { data, error });
 
       if (error) {
-        console.log('SignUp error:', error.message);
+        console.error('SignUp error:', error.message);
         
         // "User already registered" 에러 처리
         if (error.message.includes('already registered') || error.message.includes('already been registered')) {
@@ -86,16 +83,10 @@ export class AuthService {
       }
 
       if (data.user) {
-        console.log('SignUp 성공:', {
-          userId: data.user.id,
-          email: data.user.email,
-          hasSession: !!data.session
-        });
 
         // 이메일 인증이 꺼져있으면 즉시 로그인됨
         // Public users 테이블에 프로필 생성
         try {
-          console.log('Public 프로필 생성 중...');
           const { data: existingProfile, error: checkError } = await supabase
             .from('users')
             .select('id')
@@ -103,7 +94,6 @@ export class AuthService {
             .single();
 
           if (checkError || !existingProfile) {
-            console.log('Public 프로필이 없음, 생성 중...');
             const { error: profileError } = await supabase
               .from('users')
               .upsert({
@@ -117,16 +107,12 @@ export class AuthService {
               });
 
             if (profileError) {
-              console.log('Profile creation error:', profileError);
+              console.error('Profile creation error:', profileError);
               // 프로필 생성 실패해도 회원가입은 성공으로 처리
-            } else {
-              console.log('Public 프로필 생성 완료');
             }
-          } else {
-            console.log('Public 프로필이 이미 존재함');
           }
         } catch (profileErr) {
-          console.log('Profile creation exception:', profileErr);
+          console.error('Profile creation exception:', profileErr);
         }
 
         // 세션이 있으면 즉시 사용 가능
@@ -152,7 +138,7 @@ export class AuthService {
 
       return { user: null, error: null };
     } catch (error: any) {
-      console.log('SignUp error:', error);
+      console.error('SignUp error:', error);
       return { user: null, error: error.message };
     }
   }
@@ -195,7 +181,7 @@ export class AuthService {
         let userData;
 
         if (profileError || !userProfile) {
-          console.log('Profile not found, creating one:', profileError);
+          console.error('Profile not found, creating one:', profileError);
           
           // 프로필이 없으면 생성
           const nickname = user.user_metadata?.nickname || 
@@ -218,7 +204,7 @@ export class AuthService {
             .single();
 
           if (createError) {
-            console.log('Failed to create profile:', createError);
+            console.error('Failed to create profile:', createError);
             // 프로필 생성 실패해도 기본 사용자 데이터로 진행
             userData = {
               id: user.id,
@@ -242,7 +228,7 @@ export class AuthService {
       useAuthStore.getState().setUser(null);
       return null;
     } catch (error) {
-      console.log('Error getting current user:', error);
+      console.error('Error getting current user:', error);
       useAuthStore.getState().setUser(null);
       return null;
     }
@@ -253,7 +239,6 @@ export class AuthService {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('사용자가 로그인되어 있지 않습니다.');
 
-      console.log(`회원 탈퇴 시작: 사용자 ${user.email} (${user.id})`);
 
       // 1. 가족 소유권 처리
       const { data: ownedFamilies } = await supabase
@@ -303,14 +288,13 @@ export class AuthService {
       const { error: rpcError } = await supabase.rpc('delete_current_user');
       
       if (rpcError) {
-        console.log('RPC 삭제 실패 (정상적인 상황):', rpcError.message);
+        console.warn('RPC 삭제 실패 (정상적인 상황):', rpcError.message);
       }
 
       // 4. 로그아웃
       await supabase.auth.signOut();
       useAuthStore.getState().setUser(null);
 
-      console.log('✅ 회원 탈퇴 완료');
       
       return {
         success: true,
@@ -328,7 +312,6 @@ export class AuthService {
 
   static async resendConfirmationEmail(email: string) {
     try {
-      console.log(`인증 이메일 재발송 시도: ${email}`);
       
       const { error } = await supabase.auth.resend({
         type: 'signup',
@@ -336,7 +319,7 @@ export class AuthService {
       });
 
       if (error) {
-        console.log('재발송 에러:', error);
+        console.error('재발송 에러:', error);
         
         // 일반적인 에러 메시지들을 더 친화적으로 변환
         if (error.message.includes('rate limit')) {
@@ -350,17 +333,15 @@ export class AuthService {
         throw error;
       }
 
-      console.log('인증 이메일 재발송 성공');
       return { error: null, message: '인증 이메일이 재발송되었습니다. 메일함(스팸폴더 포함)을 확인해주세요.' };
     } catch (error: any) {
-      console.log('Resend confirmation error:', error);
+      console.error('Resend confirmation error:', error);
       return { error: error.message || '이메일 재발송에 실패했습니다.' };
     }
   }
 
   static async forceResendEmail(email: string) {
     try {
-      console.log(`강제 이메일 재발송 시도: ${email}`);
       
       // 먼저 기본 재발송 시도
       let result = await this.resendConfirmationEmail(email);
@@ -369,7 +350,6 @@ export class AuthService {
         return result;
       }
       
-      console.log('기본 재발송 실패, 대안 방법 시도');
       
       // 대안: 새로운 가입 시도 (이미 존재하는 경우 자동으로 재발송됨)
       try {
@@ -390,7 +370,7 @@ export class AuthService {
         }
         
       } catch (altError) {
-        console.log('대안 방법도 실패:', altError);
+        console.error('대안 방법도 실패:', altError);
       }
       
       return { 
@@ -399,7 +379,7 @@ export class AuthService {
       };
       
     } catch (error: any) {
-      console.log('Force resend error:', error);
+      console.error('Force resend error:', error);
       return { error: error.message || '이메일 재발송에 실패했습니다.' };
     }
   }
@@ -409,18 +389,16 @@ export class AuthService {
       // 24시간 이상 지난 미인증 사용자들 정리 (관리자 기능)
       // 이 기능은 Supabase의 관리자 기능이므로 클라이언트에서는 사용할 수 없음
       // 실제로는 Supabase 대시보드나 서버 사이드에서 처리해야 함
-      console.log('Cleanup unconfirmed users - this should be done server-side');
       
       return { error: null, message: 'Cleanup initiated (server-side required)' };
     } catch (error: any) {
-      console.log('Cleanup error:', error);
+      console.error('Cleanup error:', error);
       return { error: error.message };
     }
   }
 
   static async requestUserDeletion(email: string) {
     try {
-      console.log(`사용자 삭제 요청: ${email}`);
       
       // 관리자 함수 호출 시도 (권한이 있는 경우에만 작동)
       try {
@@ -429,12 +407,11 @@ export class AuthService {
         });
 
         if (error) {
-          console.log('Admin deletion failed:', error);
+          console.error('Admin deletion failed:', error);
           throw error;
         }
 
         if (data && data.success) {
-          console.log('Admin deletion successful:', data);
           return {
             error: null,
             message: '사용자가 성공적으로 삭제되었습니다.',
@@ -442,7 +419,7 @@ export class AuthService {
           };
         }
       } catch (adminError) {
-        console.log('Admin function not available or failed:', adminError);
+        console.warn('Admin function not available or failed:', adminError);
         
         // 관리자 함수 실패 시 안내 메시지
         return {
@@ -454,14 +431,13 @@ export class AuthService {
 
       return { error: 'Unexpected error occurred' };
     } catch (error: any) {
-      console.log('Request user deletion error:', error);
+      console.error('Request user deletion error:', error);
       return { error: error.message };
     }
   }
 
   static async checkUserExists(email: string) {
     try {
-      console.log(`사용자 존재 확인: ${email}`);
       
       // Public users 테이블에서 확인
       const { data: publicUser, error: publicError } = await supabase
@@ -481,7 +457,7 @@ export class AuthService {
           authUserExists = data.found;
         }
       } catch (adminError) {
-        console.log('Admin check failed, using fallback method');
+        console.warn('Admin check failed, using fallback method');
         
         // 관리자 함수 실패 시 signIn 시도로 존재 여부 확인
         try {
@@ -493,7 +469,7 @@ export class AuthService {
           // "Invalid login credentials"가 아닌 다른 에러면 사용자 존재
           authUserExists = signInError && !signInError.message.includes('Invalid login credentials');
         } catch (fallbackError) {
-          console.log('Fallback check failed:', fallbackError);
+          console.error('Fallback check failed:', fallbackError);
         }
       }
 
@@ -504,7 +480,7 @@ export class AuthService {
         needsDeletion: (!publicError && !!publicUser) || authUserExists
       };
     } catch (error: any) {
-      console.log('Check user exists error:', error);
+      console.error('Check user exists error:', error);
       return { error: error.message };
     }
   }

@@ -67,32 +67,15 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
   };
 
   const loadMembers = async () => {
-    console.log('=== loadMembers started ===');
-    console.log('Family ID:', familyId);
     setMembersLoading(true);
     try {
       const result = await FamilyMembersService.getFamilyMembers(familyId);
-      console.log('=== getFamilyMembers result ===');
-      console.log('Success:', result.success);
-      console.log('Members count:', result.members?.length);
-      console.log('Members data:', JSON.stringify(result.members, null, 2));
-      console.log('Error:', result.error);
       
       if (result.success && result.members) {
         // 등록된 순서대로 정렬 (joined_at 오름차순 - 먼저 등록한 사람이 위에)
         const sortedMembers = result.members.sort((a: any, b: any) => {
           return new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime();
         });
-        
-        console.log('=== Sorted members ===');
-        console.log('Sorted count:', sortedMembers.length);
-        console.log('Sorted data:', sortedMembers.map(m => ({ 
-          id: m.id, 
-          role: m.role, 
-          nickname: m.users?.nickname,
-          user_id: m.user_id,
-          joined_at: m.joined_at
-        })));
         setMembers(sortedMembers);
         
         // 가족방 이름 동적 생성
@@ -198,9 +181,7 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
           style: 'destructive',
           onPress: async () => {
             try {
-              console.log('Starting family deletion:', familyId);
               const result = await FamilyService.deleteFamily(familyId);
-              console.log('Delete family result:', result);
               if (result.success) {
                 Alert.alert(
                   '삭제 완료',
@@ -212,7 +193,6 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
                         // 가족 목록 새로고침
                         try {
                           const familiesResult = await FamilyService.getUserFamilies();
-                          console.log('Family list refresh after deletion:', familiesResult);
                           if (familiesResult.families) {
                             setFamilies(familiesResult.families);
                           }
@@ -370,7 +350,6 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
         <Button
           mode={selectedTab === 'ledger' ? 'contained' : 'outlined'}
           onPress={() => {
-            console.log('Switching to ledger tab');
             setSelectedTab('ledger');
           }}
           style={[styles.tabButton, selectedTab === 'ledger' && styles.activeTab]}
@@ -380,7 +359,6 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
         <Button
           mode={selectedTab === 'members' ? 'contained' : 'outlined'}
           onPress={() => {
-            console.log('Switching to members tab');
             setSelectedTab('members');
           }}
           style={[styles.tabButton, selectedTab === 'members' && styles.activeTab]}

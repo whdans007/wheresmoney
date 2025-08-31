@@ -61,7 +61,7 @@ export default function LedgerDetailScreen({ route, navigation }: Props) {
       return;
     }
     
-    // TODO: EditLedgerEntryScreen으로 네비게이션 구현
+    // 가계부 수정 기능은 향후 구현 예정
     Alert.alert('개발 중', '가계부 수정 기능은 곧 제공됩니다.');
   };
 

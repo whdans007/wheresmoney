@@ -7,7 +7,6 @@ export class FamilyService {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      console.log('Creating family for user:', { userId: user.id, name, description });
 
       // Generate unique 6-digit invite code
       let inviteCode: string;
@@ -35,7 +34,6 @@ export class FamilyService {
         throw new Error('초대 코드 생성에 실패했습니다. 다시 시도해주세요.');
       }
 
-      console.log('Generated invite code:', inviteCode);
 
       // Create family with invite code
       const { data: family, error: familyError } = await supabase
@@ -49,7 +47,6 @@ export class FamilyService {
         .select()
         .single();
 
-      console.log('Family creation result:', { family, familyError });
 
       if (familyError) {
         console.error('Family creation error:', familyError);
@@ -65,7 +62,6 @@ export class FamilyService {
           role: 'owner',
         });
 
-      console.log('Member creation result:', { memberError });
 
       if (memberError) {
         console.error('Member creation error:', memberError);
@@ -84,7 +80,6 @@ export class FamilyService {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      console.log('Loading families for user:', user.id);
 
       // 가장 간단한 쿼리로 시작 - 자신의 멤버십만 가져오기
       const { data: memberships, error: memberError } = await supabase
@@ -92,7 +87,6 @@ export class FamilyService {
         .select('family_id, role')
         .eq('user_id', user.id);
 
-      console.log('Memberships result:', { memberships, memberError });
 
       if (memberError) {
         console.error('Member error:', memberError);
@@ -100,13 +94,11 @@ export class FamilyService {
       }
 
       if (!memberships || memberships.length === 0) {
-        console.log('No memberships found');
         return { families: [], error: null };
       }
 
       // 가족방 정보를 서비스 레벨에서 안전하게 쿼리
       const familyIds = memberships.map(m => m.family_id);
-      console.log('Family IDs to fetch:', familyIds);
 
       // 사용자가 멤버인 가족방만 조회 (서비스 레벨 보안)
       const { data: families, error: familyError } = await supabase
@@ -114,7 +106,6 @@ export class FamilyService {
         .select('id, name, description, owner_id, created_at')
         .in('id', familyIds);
 
-      console.log('Families result:', { families, familyError });
 
       if (familyError) {
         console.error('Family error:', familyError);
@@ -130,7 +121,6 @@ export class FamilyService {
         };
       }) || [];
 
-      console.log('Final formatted families:', formattedFamilies);
       return { families: formattedFamilies, error: null };
     } catch (error: any) {
       console.error('Error getting user families:', error);
@@ -165,7 +155,7 @@ export class FamilyService {
           .in('id', userIds);
 
         if (userError) {
-          console.log('Error getting users:', userError);
+          console.error('Error getting users:', userError);
         }
 
         // 데이터 조합
@@ -184,7 +174,7 @@ export class FamilyService {
         error: null 
       };
     } catch (error: any) {
-      console.log('Error getting family details:', error);
+      console.error('Error getting family details:', error);
       return { 
         family: null, 
         members: [], 
@@ -264,7 +254,6 @@ export class FamilyService {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      console.log('Deleting family for user:', { userId: user.id, familyId });
 
       // 가족방 소유자인지 확인
       const { data: family, error: familyError } = await supabase
@@ -273,7 +262,6 @@ export class FamilyService {
         .eq('id', familyId)
         .single();
 
-      console.log('Family check result:', { family, familyError });
 
       if (familyError) {
         throw new Error(`가족방 정보 조회 실패: ${familyError.message}`);
@@ -288,40 +276,33 @@ export class FamilyService {
       }
 
       // 1. 먼저 ledger_entries 삭제
-      console.log('Deleting ledger entries...');
       const { error: ledgerDeleteError } = await supabase
         .from('ledger_entries')
         .delete()
         .eq('family_id', familyId);
 
-      console.log('Ledger entries deletion result:', { ledgerDeleteError });
       // ledger_entries는 존재하지 않을 수 있으므로 에러를 무시
 
       // 2. invite_codes 삭제
-      console.log('Deleting invite codes...');
       const { error: inviteCodesDeleteError } = await supabase
         .from('invite_codes')
         .delete()
         .eq('family_id', familyId);
 
-      console.log('Invite codes deletion result:', { inviteCodesDeleteError });
       // invite_codes도 존재하지 않을 수 있으므로 에러를 무시
 
       // 3. family_members에서 모든 구성원 삭제
-      console.log('Deleting family members...');
       const { error: membersDeleteError } = await supabase
         .from('family_members')
         .delete()
         .eq('family_id', familyId);
 
-      console.log('Family members deletion result:', { membersDeleteError });
 
       if (membersDeleteError) {
         throw new Error(`가족 구성원 삭제 실패: ${membersDeleteError.message}`);
       }
 
       // 4. 마지막으로 families 테이블에서 가족방 삭제
-      console.log('Deleting family record...');
       const { data: deletedData, error: deleteError } = await supabase
         .from('families')
         .delete()
@@ -329,7 +310,6 @@ export class FamilyService {
         .eq('owner_id', user.id) // 안전을 위한 이중 체크
         .select(); // 삭제된 데이터 반환
 
-      console.log('Family deletion result:', { deletedData, deleteError, familyId, userId: user.id });
 
       if (deleteError) {
         throw new Error(`가족방 삭제 실패: ${deleteError.message}`);
@@ -378,7 +358,6 @@ export class FamilyService {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      console.log('Generating new invite code for family:', familyId, 'user:', user.id);
 
       // 가족방 소유자인지 확인
       const { data: family, error: familyError } = await supabase
@@ -401,7 +380,6 @@ export class FamilyService {
 
       while (!isUnique && attempts < maxAttempts) {
         newInviteCode = Math.floor(100000 + Math.random() * 900000).toString();
-        console.log('Trying new code:', newInviteCode);
         
         // 중복 확인
         const { data: existingFamily } = await supabase
@@ -420,14 +398,8 @@ export class FamilyService {
         throw new Error('새로운 초대 코드 생성에 실패했습니다. 다시 시도해주세요.');
       }
 
-      console.log('Generated new unique code:', newInviteCode!);
 
       // 새로운 코드로 업데이트
-      console.log('Updating families table with new invite code:', {
-        familyId,
-        newInviteCode: newInviteCode!,
-        userId: user.id
-      });
 
       const { data: updateResult, error: updateError } = await supabase
         .from('families')
@@ -436,7 +408,6 @@ export class FamilyService {
         .eq('owner_id', user.id) // 안전을 위한 이중 체크
         .select('id, name, invite_code');
 
-      console.log('Update result:', { updateResult, updateError });
 
       if (updateError) {
         console.error('Failed to update invite code:', updateError);
@@ -444,11 +415,9 @@ export class FamilyService {
       }
 
       if (!updateResult || updateResult.length === 0) {
-        console.error('No rows were updated - possible permission issue');
         throw new Error('초대 코드 업데이트에 실패했습니다. 권한을 확인해주세요.');
       }
 
-      console.log('Successfully updated invite code. Result:', updateResult[0]);
 
       return { 
         inviteCode: newInviteCode!, 

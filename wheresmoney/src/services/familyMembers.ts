@@ -28,8 +28,6 @@ export class FamilyMembersService {
   // 가족 구성원 목록 조회
   static async getFamilyMembers(familyId: string): Promise<{ success: boolean; members?: FamilyMemberWithUser[]; error?: string }> {
     try {
-      console.log('=== getFamilyMembers service call ===');
-      console.log('Family ID:', familyId);
       
       // 먼저 간단한 쿼리로 family_members 테이블 확인
       const { data: rawMembers, error: rawError } = await supabase
@@ -37,10 +35,6 @@ export class FamilyMembersService {
         .select('*')
         .eq('family_id', familyId);
       
-      console.log('=== Raw family_members query ===');
-      console.log('Raw error:', rawError);
-      console.log('Raw members:', rawMembers);
-      console.log('Raw count:', rawMembers?.length);
 
       if (rawError) {
         console.error('Raw query 오류:', rawError);
@@ -48,22 +42,17 @@ export class FamilyMembersService {
       }
 
       if (!rawMembers || rawMembers.length === 0) {
-        console.log('No members found in family_members table');
         return { success: true, members: [] };
       }
 
       // 각 멤버의 사용자 정보를 개별적으로 조회
       const membersWithUsers = [];
       for (const member of rawMembers) {
-        console.log(`=== Getting user info for user_id: ${member.user_id} ===`);
-        
         const { data: userData, error: userError } = await supabase
           .from('users')
           .select('id, nickname, avatar_url, email')
           .eq('id', member.user_id)
           .single();
-        
-        console.log('User data result:', { userData, userError });
         
         if (userData) {
           membersWithUsers.push({
@@ -71,7 +60,6 @@ export class FamilyMembersService {
             users: userData
           });
         } else {
-          console.log('User not found for user_id:', member.user_id);
           // 사용자 정보가 없어도 멤버는 포함 (기본값으로)
           membersWithUsers.push({
             ...member,
@@ -85,9 +73,6 @@ export class FamilyMembersService {
         }
       }
 
-      console.log('=== Final members with user data ===');
-      console.log('Final count:', membersWithUsers.length);
-      console.log('Final data:', JSON.stringify(membersWithUsers, null, 2));
 
       return { success: true, members: membersWithUsers };
     } catch (error: any) {
@@ -157,7 +142,6 @@ export class FamilyMembersService {
       expiresAt.setHours(expiresAt.getHours() + 24);
 
       // 초대 코드 저장
-      console.log('Saving invite code:', { familyId, code: code!, userId: user.id, expiresAt: expiresAt.toISOString() });
       
       const { data: inviteCode, error: insertError } = await supabase
         .from('invite_codes')
@@ -171,14 +155,12 @@ export class FamilyMembersService {
         .select('code, expires_at')
         .single();
 
-      console.log('Insert result:', { inviteCode, insertError });
 
       if (insertError) {
         console.error('초대 코드 저장 오류:', insertError);
         
         // 테이블이 없을 경우 임시로 간단한 방식 사용
         if (insertError.code === 'PGRST116' || insertError.message.includes('relation "invite_codes" does not exist')) {
-          console.log('코드 생성: invite_codes 테이블 오류로 임시 방식 사용');
           // familyId 기반 간단한 코드 생성 (임시)
           const simpleCode = Math.floor(100000 + Math.random() * 900000).toString();
           return { success: true, code: simpleCode, expiresAt: expiresAt.toISOString() };
@@ -201,10 +183,7 @@ export class FamilyMembersService {
   // 초대 코드로 가족 참여 - 간단한 방식
   static async joinFamilyByCode(code: string): Promise<{ success: boolean; familyId?: string; familyName?: string; error?: string }> {
     try {
-      console.log('joinFamilyByCode started with code:', code);
-      
       const { data: { user } } = await supabase.auth.getUser();
-      console.log('Current user:', user?.id);
       
       if (!user) {
         return { success: false, error: '로그인이 필요합니다.' };
@@ -215,17 +194,14 @@ export class FamilyMembersService {
       }
 
       // 1. 초대 코드로 가족방 찾기
-      console.log('Looking for family with invite code:', code);
       const { data: family, error: familyError } = await supabase
         .from('families')
         .select('id, name, owner_id')
         .eq('invite_code', code)
         .single();
 
-      console.log('Family lookup result:', { family, familyError });
 
       if (familyError || !family) {
-        console.log('Family not found:', familyError?.message);
         return { success: false, error: '유효하지 않은 초대 코드입니다.' };
       }
 
@@ -255,7 +231,6 @@ export class FamilyMembersService {
       }
 
       // 4. 가족 멤버로 추가
-      console.log('Adding user to family members:', { family_id: family.id, user_id: user.id });
       const { data: newMember, error: insertError } = await supabase
         .from('family_members')
         .insert({
@@ -266,14 +241,12 @@ export class FamilyMembersService {
         .select('*')
         .single();
 
-      console.log('Member addition result:', { newMember, insertError });
 
       if (insertError) {
         console.error('Failed to add member:', insertError);
         return { success: false, error: `가족 참여에 실패했습니다: ${insertError.message}` };
       }
 
-      console.log('Successfully joined family!');
       return {
         success: true,
         familyId: family.id,

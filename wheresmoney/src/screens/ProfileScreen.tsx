@@ -90,7 +90,7 @@ export default function ProfileScreen({ navigation }: Props) {
             left={(props) => <List.Icon {...props} icon="bell" />}
             right={(props) => <List.Icon {...props} icon="chevron-right" />}
             onPress={() => {
-              // TODO: Navigate to notification settings
+              // 알림 설정 기능은 향후 구현 예정
             }}
           />
           <List.Item
@@ -98,7 +98,7 @@ export default function ProfileScreen({ navigation }: Props) {
             left={(props) => <List.Icon {...props} icon="help-circle" />}
             right={(props) => <List.Icon {...props} icon="chevron-right" />}
             onPress={() => {
-              // TODO: Navigate to help
+              // 도움말 기능은 향후 구현 예정
             }}
           />
         </Card.Content>
