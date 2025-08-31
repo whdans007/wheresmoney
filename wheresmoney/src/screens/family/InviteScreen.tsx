@@ -15,6 +15,8 @@ import { RouteProp } from '@react-navigation/native';
 import { HomeStackParamList } from '../../types';
 import { FamilyMembersService } from '../../services/familyMembers';
 import { FamilyService } from '../../services/family';
+import { useSettingsStore } from '../../stores/settingsStore';
+import { colors, darkColors } from '../../theme';
 
 type InviteScreenNavigationProp = StackNavigationProp<HomeStackParamList, 'Invite'>;
 type InviteScreenRouteProp = RouteProp<HomeStackParamList, 'Invite'>;
@@ -26,6 +28,8 @@ interface Props {
 
 export default function InviteScreen({ navigation, route }: Props) {
   const { familyId } = route.params;
+  const { isDarkMode } = useSettingsStore();
+  const themeColors = isDarkMode ? darkColors : colors;
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [joinCode, setJoinCode] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
@@ -238,19 +242,19 @@ export default function InviteScreen({ navigation, route }: Props) {
   }, [familyId]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.background.secondary }]}>
       <Appbar.Header>
         <Appbar.BackAction onPress={() => navigation.goBack()} />
         <Appbar.Content title={familyName ? `${familyName} 초대` : "가족방 초대"} />
       </Appbar.Header>
 
       <View style={styles.content}>
-        <Card style={styles.card}>
+        <Card style={[styles.card, { backgroundColor: themeColors.surface.primary }]}>
           <Card.Content>
-            <Text variant="titleMedium" style={styles.sectionTitle}>
+            <Text variant="titleMedium" style={[styles.sectionTitle, { color: themeColors.text.primary }]}>
               {familyName ? `${familyName} 가족방 초대하기` : '가족방 초대하기'}
             </Text>
-            <Paragraph style={styles.description}>
+            <Paragraph style={[styles.description, { color: themeColors.text.secondary }]}>
               {familyName 
                 ? `${familyName} 가족방의 초대 코드를 공유하여 새 멤버를 초대하세요.`
                 : '초대 코드를 공유하여 가족을 초대하세요.'
@@ -260,18 +264,18 @@ export default function InviteScreen({ navigation, route }: Props) {
             {!hasLoaded || isLoading ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" />
-                <Text style={styles.loadingText}>초대 코드 불러오는 중...</Text>
+                <Text style={[styles.loadingText, { color: themeColors.text.secondary }]}>초대 코드 불러오는 중...</Text>
               </View>
             ) : inviteCode !== null && inviteCode !== '' ? (
               <View style={styles.inviteContainer}>
                 <View style={styles.qrContainer}>
-                  <Text style={styles.qrPlaceholder}>
+                  <Text style={[styles.qrPlaceholder, { color: themeColors.text.tertiary }]}>
                     QR 코드 자리{'\n'}(임시로 비활성화됨)
                   </Text>
                 </View>
                 
                 <View style={styles.codeContainer}>
-                  <Text style={styles.codeText}>초대 코드: {inviteCode}</Text>
+                  <Text style={[styles.codeText, { backgroundColor: themeColors.surface.secondary, color: themeColors.primary }]}>초대 코드: {inviteCode}</Text>
                   <Button
                     mode="outlined"
                     onPress={copyInviteCode}
@@ -316,7 +320,7 @@ export default function InviteScreen({ navigation, route }: Props) {
               </View>
             ) : (
               <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>
+                <Text style={[styles.errorText, { color: themeColors.error.primary }]}>
                   초대 코드를 불러올 수 없습니다.{'\n'}
                   가족방 소유자만 초대 코드를 볼 수 있습니다.
                 </Text>
@@ -328,12 +332,12 @@ export default function InviteScreen({ navigation, route }: Props) {
           </Card.Content>
         </Card>
 
-        <Card style={styles.card}>
+        <Card style={[styles.card, { backgroundColor: themeColors.surface.primary }]}>
           <Card.Content>
-            <Text variant="titleMedium" style={styles.sectionTitle}>
+            <Text variant="titleMedium" style={[styles.sectionTitle, { color: themeColors.text.primary }]}>
               가족방 참여하기
             </Text>
-            <Paragraph style={styles.description}>
+            <Paragraph style={[styles.description, { color: themeColors.text.secondary }]}>
               받은 초대 코드를 입력하여 가족방에 참여하세요.
             </Paragraph>
 
@@ -376,7 +380,6 @@ const { width } = Dimensions.get('window');
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   content: {
     flex: 1,
@@ -391,7 +394,6 @@ const styles = StyleSheet.create({
   },
   description: {
     marginBottom: 16,
-    color: '#666',
   },
   loadingContainer: {
     alignItems: 'center',
@@ -399,7 +401,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 16,
-    color: '#666',
   },
   inviteContainer: {
     alignItems: 'center',
@@ -418,7 +419,6 @@ const styles = StyleSheet.create({
   },
   qrPlaceholder: {
     textAlign: 'center',
-    color: '#999',
     fontSize: 16,
   },
   codeContainer: {
@@ -433,11 +433,9 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
     fontWeight: 'bold',
     textAlign: 'center',
-    backgroundColor: '#f0f0f0',
     padding: 12,
     borderRadius: 8,
     flex: 1,
-    color: '#2196F3',
   },
   copyButton: {
     borderColor: '#2196F3',
@@ -470,7 +468,6 @@ const styles = StyleSheet.create({
     paddingVertical: 32,
   },
   errorText: {
-    color: '#d32f2f',
     marginBottom: 16,
     textAlign: 'center',
   },

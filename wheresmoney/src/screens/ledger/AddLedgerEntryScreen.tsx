@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Image, Alert } from 'react-native';
 import { 
   TextInput, 
@@ -7,14 +7,19 @@ import {
   HelperText,
   Title,
   Text,
-  Chip
+  Chip,
+  ActivityIndicator
 } from 'react-native-paper';
 import { RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { HomeStackParamList } from '../../types';
-import { DEFAULT_CATEGORIES } from '../../constants/categories';
+import { CategoryService, CategoryData } from '../../services/category';
 import { LedgerService } from '../../services/ledger';
+import { useSettingsStore } from '../../stores/settingsStore';
+import { colors, darkColors } from '../../theme';
 
 type AddLedgerEntryScreenRouteProp = RouteProp<HomeStackParamList, 'AddLedgerEntry'>;
 type AddLedgerEntryScreenNavigationProp = StackNavigationProp<HomeStackParamList, 'AddLedgerEntry'>;
@@ -32,17 +37,63 @@ export default function AddLedgerEntryScreen({ route, navigation }: Props) {
   const [image, setImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [categories, setCategories] = useState<CategoryData[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const { isDarkMode } = useSettingsStore();
+  const themeColors = isDarkMode ? darkColors : colors;
+
+  // 카테고리 로드
+  const loadCategories = async () => {
+    setCategoriesLoading(true);
+    try {
+      const result = await CategoryService.getCategories();
+      if (result.success && result.categories) {
+        setCategories(result.categories);
+      } else {
+        console.error('카테고리 로딩 실패:', result.error);
+        setError('카테고리를 불러오는데 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('카테고리 로딩 예외:', error);
+      setError('카테고리를 불러오는데 실패했습니다.');
+    } finally {
+      setCategoriesLoading(false);
+    }
+  };
+
+  // 화면 포커스될 때 카테고리 로드
+  useFocusEffect(
+    React.useCallback(() => {
+      loadCategories();
+    }, [])
+  );
+
+  // 이미지 리사이즈 함수
+  const resizeImage = async (uri: string): Promise<string> => {
+    const manipulatedImage = await ImageManipulator.manipulateAsync(
+      uri,
+      [
+        { resize: { width: 800 } }, // 너비 800px로 리사이즈 (비율 유지)
+      ],
+      {
+        compress: 0.8, // 80% 품질로 압축
+        format: ImageManipulator.SaveFormat.JPEG,
+      }
+    );
+    return manipulatedImage.uri;
+  };
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
+      aspect: [2, 3],
+      quality: 0.9, // 90% 품질
     });
 
     if (!result.canceled) {
-      setImage(result.assets[0].uri);
+      const resizedUri = await resizeImage(result.assets[0].uri);
+      setImage(resizedUri);
     }
   };
 
@@ -56,12 +107,13 @@ export default function AddLedgerEntryScreen({ route, navigation }: Props) {
 
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
+      aspect: [2, 3],
+      quality: 0.9, // 90% 품질
     });
 
     if (!result.canceled) {
-      setImage(result.assets[0].uri);
+      const resizedUri = await resizeImage(result.assets[0].uri);
+      setImage(resizedUri);
     }
   };
 
@@ -131,13 +183,13 @@ export default function AddLedgerEntryScreen({ route, navigation }: Props) {
     }
   };
 
-  const selectedCategory = DEFAULT_CATEGORIES.find(cat => cat.id === selectedCategoryId);
+  const selectedCategory = categories.find(cat => cat.id === selectedCategoryId);
 
   return (
-    <ScrollView style={styles.container}>
-      <Card style={styles.card}>
+    <ScrollView style={[styles.container, { backgroundColor: themeColors.background.secondary }]}>
+      <Card style={[styles.card, { backgroundColor: themeColors.surface.primary }]}>
         <Card.Content>
-          <Title style={styles.title}>가계부 작성</Title>
+          <Title style={[styles.title, { color: themeColors.text.primary }]}>가계부 작성</Title>
 
           <TextInput
             label="금액"
@@ -148,23 +200,30 @@ export default function AddLedgerEntryScreen({ route, navigation }: Props) {
             right={<TextInput.Affix text="원" />}
           />
 
-          <Text style={styles.sectionTitle}>카테고리</Text>
-          <View style={styles.categoryContainer}>
-            {DEFAULT_CATEGORIES.map((category) => (
-              <Chip
-                key={category.id}
-                selected={selectedCategoryId === category.id}
-                onPress={() => setSelectedCategoryId(category.id)}
-                style={[
-                  styles.categoryChip,
-                  selectedCategoryId === category.id && { backgroundColor: category.color }
-                ]}
-                textStyle={selectedCategoryId === category.id && { color: 'white' }}
-              >
-                {category.name}
-              </Chip>
-            ))}
-          </View>
+          <Text style={[styles.sectionTitle, { color: themeColors.text.primary }]}>카테고리</Text>
+          {categoriesLoading ? (
+            <View style={styles.categoriesLoadingContainer}>
+              <ActivityIndicator size="small" />
+              <Text style={[styles.loadingText, { color: themeColors.text.secondary }]}>카테고리 로딩 중...</Text>
+            </View>
+          ) : (
+            <View style={styles.categoryContainer}>
+              {categories.map((category) => (
+                <Chip
+                  key={category.id}
+                  selected={selectedCategoryId === category.id}
+                  onPress={() => setSelectedCategoryId(category.id)}
+                  style={[
+                    styles.categoryChip,
+                    selectedCategoryId === category.id && { backgroundColor: category.color }
+                  ]}
+                  textStyle={selectedCategoryId === category.id && { color: 'white' }}
+                >
+                  {category.name}
+                </Chip>
+              ))}
+            </View>
+          )}
 
           <TextInput
             label="내용"
@@ -175,7 +234,7 @@ export default function AddLedgerEntryScreen({ route, navigation }: Props) {
             numberOfLines={3}
           />
 
-          <Text style={styles.sectionTitle}>사진 (필수)</Text>
+          <Text style={[styles.sectionTitle, { color: themeColors.text.primary }]}>사진 (필수)</Text>
           {image ? (
             <View style={styles.imageContainer}>
               <Image source={{ uri: image }} style={styles.image} />
@@ -222,7 +281,6 @@ export default function AddLedgerEntryScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   card: {
     margin: 20,
@@ -255,7 +313,7 @@ const styles = StyleSheet.create({
   },
   image: {
     width: 200,
-    height: 150,
+    height: 300,
     borderRadius: 8,
     marginBottom: 8,
   },
@@ -269,5 +327,15 @@ const styles = StyleSheet.create({
   saveButton: {
     marginTop: 16,
     paddingVertical: 8,
+  },
+  categoriesLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
+  loadingText: {
+    fontSize: 14,
   },
 });

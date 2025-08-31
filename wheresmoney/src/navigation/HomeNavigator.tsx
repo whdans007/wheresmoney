@@ -1,5 +1,7 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
+import { useTheme } from '@react-navigation/native';
+import { useSettingsStore } from '../stores/settingsStore';
 import { HomeStackParamList } from '../types';
 
 // Import screens (will create these)
@@ -15,8 +17,22 @@ import StatsScreen from '../screens/stats/StatsScreen';
 const Stack = createStackNavigator<HomeStackParamList>();
 
 export default function HomeNavigator() {
+  const theme = useTheme();
+  const { isDarkMode } = useSettingsStore();
+
+  const screenOptions = {
+    headerStyle: {
+      backgroundColor: theme.colors.card,
+      borderBottomColor: isDarkMode ? '#333333' : '#e6e6e6',
+    },
+    headerTintColor: theme.colors.text,
+    headerTitleStyle: {
+      color: theme.colors.text,
+    },
+  };
+
   return (
-    <Stack.Navigator>
+    <Stack.Navigator screenOptions={screenOptions}>
       <Stack.Screen 
         name="HomeScreen" 
         component={HomeScreen}

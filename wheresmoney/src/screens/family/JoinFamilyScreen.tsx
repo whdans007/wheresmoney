@@ -13,7 +13,8 @@ import { HomeStackParamList } from '../../types';
 import { FamilyMembersService } from '../../services/familyMembers';
 import { FamilyService } from '../../services/family';
 import { useFamilyStore } from '../../stores/familyStore';
-import { colors, spacing, shadows, textStyles } from '../../theme';
+import { useSettingsStore } from '../../stores/settingsStore';
+import { colors, darkColors, spacing, shadows, textStyles } from '../../theme';
 
 type JoinFamilyScreenNavigationProp = StackNavigationProp<HomeStackParamList, 'JoinFamily'>;
 
@@ -25,6 +26,8 @@ export default function JoinFamilyScreen({ navigation }: Props) {
   const [joinCode, setJoinCode] = useState<string>('');
   const [isJoining, setIsJoining] = useState(false);
   const { setFamilies } = useFamilyStore();
+  const { isDarkMode } = useSettingsStore();
+  const themeColors = isDarkMode ? darkColors : colors;
 
   const joinFamily = async () => {
     if (!joinCode.trim()) {
@@ -86,24 +89,24 @@ export default function JoinFamilyScreen({ navigation }: Props) {
   };
 
   return (
-    <View style={styles.container}>
-      <Appbar.Header style={styles.header}>
+    <View style={[styles.container, { backgroundColor: themeColors.background.secondary }]}>
+      <Appbar.Header style={[styles.header, { backgroundColor: themeColors.surface.primary }]}>
         <Appbar.BackAction onPress={() => navigation.goBack()} />
         <Appbar.Content title="가족방 참여" />
       </Appbar.Header>
 
       <View style={styles.content}>
-        <Card style={styles.card}>
+        <Card style={[styles.card, { backgroundColor: themeColors.surface.primary }]}>
           <Card.Content>
             <View style={styles.iconContainer}>
               <Text style={styles.icon}>👨‍👩‍👧‍👦</Text>
             </View>
             
-            <Text variant="headlineSmall" style={styles.title}>
+            <Text variant="headlineSmall" style={[styles.title, { color: themeColors.text.primary }]}>
               가족방 참여하기
             </Text>
             
-            <Paragraph style={styles.description}>
+            <Paragraph style={[styles.description, { color: themeColors.text.secondary }]}>
               가족이 공유해준 6자리 초대 코드를 입력하여{'\n'}
               가족방에 참여하세요.
             </Paragraph>
@@ -129,13 +132,13 @@ export default function JoinFamilyScreen({ navigation }: Props) {
               disabled={isJoining || joinCode.length !== 6}
               style={styles.joinButton}
               contentStyle={styles.joinButtonContent}
-              buttonColor={colors.primary[500]}
+              buttonColor={themeColors.primary[500]}
             >
               {isJoining ? '참여 중...' : '가족방 참여하기'}
             </Button>
 
-            <View style={styles.helpContainer}>
-              <Text style={styles.helpText}>
+            <View style={[styles.helpContainer, { backgroundColor: themeColors.background.tertiary }]}>
+              <Text style={[styles.helpText, { color: themeColors.text.secondary }]}>
                 💡 초대 코드는 가족방 소유자가 생성할 수 있습니다
               </Text>
             </View>
@@ -149,10 +152,8 @@ export default function JoinFamilyScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background.secondary,
   },
   header: {
-    backgroundColor: colors.surface.primary,
     ...shadows.small,
   },
   content: {
@@ -161,7 +162,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   card: {
-    backgroundColor: colors.surface.primary,
     borderRadius: 24,
     ...shadows.medium,
   },
@@ -176,13 +176,11 @@ const styles = StyleSheet.create({
     ...textStyles.h2,
     textAlign: 'center',
     marginBottom: spacing[3],
-    color: colors.text.primary,
   },
   description: {
     ...textStyles.body1,
     textAlign: 'center',
     marginBottom: spacing[6],
-    color: colors.text.secondary,
     lineHeight: 24,
   },
   input: {
@@ -202,14 +200,12 @@ const styles = StyleSheet.create({
     height: 48,
   },
   helpContainer: {
-    backgroundColor: colors.background.tertiary,
     padding: spacing[3],
     borderRadius: spacing[3],
     alignItems: 'center',
   },
   helpText: {
     ...textStyles.caption,
-    color: colors.text.secondary,
     textAlign: 'center',
   },
 });

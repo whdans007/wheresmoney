@@ -17,11 +17,13 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { HomeStackParamList } from '../../types';
 import { LedgerService } from '../../services/ledger';
-import { DEFAULT_CATEGORIES } from '../../constants/categories';
+import { CategoryService, CategoryData } from '../../services/category';
 import { useFamilyStore } from '../../stores/familyStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { FamilyMembersService } from '../../services/familyMembers';
 import { FamilyService } from '../../services/family';
 import { supabase } from '../../services/supabase';
+import { darkColors } from '../../theme';
 
 type FamilyDetailScreenRouteProp = RouteProp<HomeStackParamList, 'FamilyDetail'>;
 type FamilyDetailScreenNavigationProp = StackNavigationProp<HomeStackParamList, 'FamilyDetail'>;
@@ -33,7 +35,7 @@ interface Props {
 
 export default function FamilyDetailScreen({ route, navigation }: Props) {
   const { familyId } = route.params;
-  const [selectedTab, setSelectedTab] = useState<'ledger' | 'members'>('members');
+  const [selectedTab, setSelectedTab] = useState<'ledger' | 'members'>('ledger');
   const [ledgerEntries, setLedgerEntries] = useState<any[]>([]);
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -42,15 +44,34 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
   const [displayName, setDisplayName] = useState<string>('');
   const [currentUserId, setCurrentUserId] = useState<string>('');
   const [isOwner, setIsOwner] = useState(false);
+  const [categories, setCategories] = useState<CategoryData[]>([]);
   
   const { families, setFamilies } = useFamilyStore();
+  const { isDarkMode } = useSettingsStore();
+  const themeColors = isDarkMode ? darkColors : colors;
   const family = families.find(f => f.id === familyId);
+
+  // 카테고리 로드
+  const loadCategories = async () => {
+    try {
+      const result = await CategoryService.getCategories();
+      if (result.success && result.categories) {
+        setCategories(result.categories);
+      }
+    } catch (error) {
+      console.error('카테고리 로딩 실패:', error);
+    }
+  };
 
   const loadLedgerEntries = async () => {
     setLoading(true);
     try {
+      console.log('Loading ledger entries for familyId:', familyId);
       const result = await LedgerService.getLedgerEntries(familyId);
+      console.log('Ledger entries result:', result);
+      
       if (result.success && result.entries) {
+        console.log('Ledger entries loaded:', result.entries.length);
         setLedgerEntries(result.entries);
         
         // 총 금액 계산
@@ -58,9 +79,11 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
         setTotalAmount(total);
       } else {
         console.error('가계부 로딩 실패:', result.error);
+        setLedgerEntries([]);
       }
     } catch (error) {
       console.error('가계부 로딩 예외:', error);
+      setLedgerEntries([]);
     } finally {
       setLoading(false);
     }
@@ -77,32 +100,13 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
           return new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime();
         });
         setMembers(sortedMembers);
-        
-        // 가족방 이름 동적 생성
-        if (result.members.length > 0) {
-          const memberNames = result.members
-            .slice(0, 3) // 최대 3명까지만 표시
-            .map((member: any) => member.users?.nickname || '사용자')
-            .join(', ');
-          
-          const remainingCount = result.members.length > 3 ? result.members.length - 3 : 0;
-          const dynamicName = remainingCount > 0 
-            ? `${memberNames} 외 ${remainingCount}명의 가족방`
-            : `${memberNames}의 가족방`;
-            
-          setDisplayName(dynamicName);
-        } else {
-          setDisplayName(family?.name || '가족방');
-        }
       } else {
         console.error('가족 구성원 로딩 실패:', result.error);
         setMembers([]);
-        setDisplayName(family?.name || '가족방');
       }
     } catch (error) {
       console.error('가족 구성원 로딩 예외:', error);
       setMembers([]);
-      setDisplayName(family?.name || '가족방');
     } finally {
       setMembersLoading(false);
     }
@@ -223,44 +227,47 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
   useFocusEffect(
     React.useCallback(() => {
       getCurrentUser();
+      loadCategories();
       loadLedgerEntries();
       loadMembers();
     }, [familyId])
   );
 
   const renderLedgerItem = ({ item }: any) => {
-    const category = DEFAULT_CATEGORIES.find(cat => cat.id === item.category_id);
+    const category = categories.find(cat => cat.id === item.category_id);
     const userName = item.users?.nickname || '사용자';
-    const displayDate = new Date(item.created_at).toLocaleDateString('ko-KR');
+    const displayDate = new Date(item.date || item.created_at).toLocaleDateString('ko-KR', {
+      month: 'short',
+      day: 'numeric'
+    });
+    
+    // 지출/수입 구분 (현재는 모든 금액이 지출로 가정)
+    const isExpense = item.amount > 0;
+    const typeText = isExpense ? '지출' : '수입';
+    const amountColor = isExpense ? '#FF6B6B' : '#4ECDC4';
     
     return (
-      <List.Item
-        title={`${item.amount.toLocaleString()}원`}
-        description={`${item.description} • ${userName}`}
-        left={() => (
-          <View style={styles.categoryContainer}>
-            <Image source={{ uri: item.photo_url }} style={styles.thumbnailImage} />
-          </View>
-        )}
-        right={() => (
-          <View style={styles.rightContainer}>
-            {category && (
-              <Chip 
-                compact 
-                style={[styles.categoryChip, { backgroundColor: category.color }]}
-                textStyle={{ color: 'white', fontSize: 10 }}
-              >
-                {category.name}
-              </Chip>
-            )}
-            <Text style={styles.dateText}>{displayDate}</Text>
-          </View>
-        )}
-        onPress={() => {
-          navigation.navigate('LedgerDetail', { entryId: item.id });
-        }}
-        style={styles.ledgerItem}
-      />
+      <View 
+        style={styles.ledgerTableRow}
+        onTouchEnd={() => navigation.navigate('LedgerDetail', { entryId: item.id })}
+      >
+        {/* 첫 번째 줄: 날짜 | 등록자 | 지출/수입 */}
+        <View style={styles.ledgerFirstRow}>
+          <Text style={styles.ledgerDateText}>{displayDate}</Text>
+          <Text style={styles.ledgerUserText}>{userName}</Text>
+          <Text style={[styles.ledgerTypeText, { color: amountColor }]}>{typeText}</Text>
+        </View>
+        
+        {/* 두 번째 줄: 내역 | 금액 */}
+        <View style={styles.ledgerSecondRow}>
+          <Text style={styles.ledgerDescriptionText} numberOfLines={1}>
+            {item.description}
+          </Text>
+          <Text style={[styles.ledgerAmountText, { color: amountColor }]}>
+            {Math.abs(item.amount).toLocaleString()}원
+          </Text>
+        </View>
+      </View>
     );
   };
 
@@ -278,7 +285,17 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
     
     return (
       <List.Item
-        title={displayName}
+        title={
+          <View style={styles.titleContainer}>
+            <Text style={styles.memberName}>{item.users?.nickname || '사용자'}</Text>
+            {isCurrentUser && (
+              <Badge style={styles.currentUserBadge}>나</Badge>
+            )}
+            {item.role === 'owner' && (
+              <Badge style={styles.ownerBadgeNext}>방장</Badge>
+            )}
+          </View>
+        }
         description={item.users?.email || '이메일 없음'}
         left={(props) => (
           item.users?.avatar_url ? (
@@ -292,55 +309,43 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
             {isNewMember && (
               <Badge style={styles.newMemberBadge}>새 멤버</Badge>
             )}
-            {item.role === 'owner' && (
-              <Badge style={styles.ownerBadge}>방장</Badge>
-            )}
-            <View style={styles.joinedDateContainer}>
-              <Text style={styles.joinedDateText}>
-                {new Date(item.joined_at).toLocaleDateString('ko-KR', {
-                  year: 'numeric',
-                  month: 'short',
-                  day: 'numeric'
-                })}
-              </Text>
-            </View>
           </View>
         )}
         style={[
           isNewMember ? styles.newMemberItem : styles.memberItem,
-          { backgroundColor: colors.surface.primary }
+          { backgroundColor: themeColors.surface.primary }
         ]}
       />
     );
   };
 
   return (
-    <View style={styles.container}>
-      <Card style={styles.headerCard}>
+    <View style={[styles.container, { backgroundColor: themeColors.background.secondary }]}>
+      <Card style={[styles.headerCard, { backgroundColor: themeColors.surface.primary }]}>
         <Card.Content>
-          <Title>{displayName || family?.name || '가족방'}</Title>
-          <Text>{family?.description || ''}</Text>
+          <View style={styles.headerRow}>
+            <View style={styles.titleContainer}>
+              <Title style={{ color: themeColors.text.primary }}>{family?.name || '가족방'}</Title>
+              <Text style={{ color: themeColors.text.secondary }}>{family?.description || ''}</Text>
+            </View>
+            {selectedTab === 'ledger' && (
+              <Button
+                mode="outlined"
+                icon="chart-line"
+                onPress={() => navigation.navigate('Stats', { familyId })}
+                style={styles.headerStatsButton}
+                compact
+                labelStyle={styles.headerStatsButtonLabel}
+              >
+                통계
+              </Button>
+            )}
+          </View>
           {selectedTab === 'ledger' && (
-            <View style={styles.statsContainer}>
-              <View style={styles.statsRow}>
-                <Text 
-                  style={styles.totalAmountText}
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                >
-                  이번 달 총 지출: {totalAmount.toLocaleString()}원
-                </Text>
-                <Button
-                  mode="outlined"
-                  icon="chart-line"
-                  onPress={() => navigation.navigate('Stats', { familyId })}
-                  style={styles.statsButton}
-                  compact
-                  labelStyle={styles.statsButtonLabel}
-                >
-                  통계
-                </Button>
-              </View>
+            <View style={styles.statsTextContainer}>
+              <Text style={[styles.totalAmountText, { color: themeColors.text.primary }]}>
+                이번 달 총 지출: {totalAmount.toLocaleString()}원
+              </Text>
             </View>
           )}
         </Card.Content>
@@ -367,39 +372,43 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
         </Button>
       </View>
 
-      <Card style={styles.contentCard}>
+      <Card style={[styles.contentCard, { backgroundColor: themeColors.surface.primary }]}>
         <View style={styles.cardContentStyle}>
           {selectedTab === 'ledger' ? (
             loading ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" />
-                <Text style={styles.loadingText}>가계부 로딩 중...</Text>
+                <Text style={[styles.loadingText, { color: themeColors.text.secondary }]}>가계부 로딩 중...</Text>
               </View>
             ) : (
-              <FlatList
-                data={ledgerEntries}
-                renderItem={renderLedgerItem}
-                keyExtractor={(item) => item.id}
-                onRefresh={loadLedgerEntries}
-                refreshing={loading}
-                ListEmptyComponent={
-                  <Text style={styles.emptyText}>
-                    아직 가계부 내역이 없습니다.{'\n'}
-                    첫 번째 내역을 추가해보세요!
-                  </Text>
-                }
-              />
+              <>
+                {console.log('Rendering FlatList with', ledgerEntries.length, 'entries')}
+                <FlatList
+                  data={ledgerEntries}
+                  renderItem={renderLedgerItem}
+                  keyExtractor={(item) => item.id}
+                  onRefresh={loadLedgerEntries}
+                  refreshing={loading}
+                  style={styles.ledgerList}
+                  ListEmptyComponent={
+                    <Text style={[styles.emptyText, { color: themeColors.text.secondary }]}>
+                      아직 가계부 내역이 없습니다.{'\n'}
+                      첫 번째 내역을 추가해보세요!
+                    </Text>
+                  }
+                />
+              </>
             )
           ) : (
             membersLoading ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" />
-                <Text style={styles.loadingText}>구성원 로딩 중...</Text>
+                <Text style={[styles.loadingText, { color: themeColors.text.secondary }]}>구성원 로딩 중...</Text>
               </View>
             ) : (
               <View style={styles.membersContainer}>
                 <View style={styles.memberHeader}>
-                  <Text style={styles.memberTitle}>
+                  <Text style={[styles.memberTitle, { color: themeColors.text.primary }]}>
                     가족 구성원 ({members.length}명)
                   </Text>
                   {isOwner ? (
@@ -436,10 +445,10 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
                       mode="outlined"
                       icon="exit-to-app"
                       onPress={leaveFamily}
-                      style={styles.leaveButton}
+                      style={[styles.leaveButton, { borderColor: themeColors.error.primary }]}
                       compact
                       buttonColor="transparent"
-                      textColor={colors.error}
+                      textColor={themeColors.error.primary}
                       contentStyle={{ height: 36 }}
                       labelStyle={{ fontSize: 14, fontWeight: '600' }}
                     >
@@ -454,10 +463,9 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
                   onRefresh={loadMembers}
                   refreshing={membersLoading}
                   style={styles.membersList}
-                  contentContainerStyle={{ flexGrow: 1 }}
                   showsVerticalScrollIndicator={false}
                   ListEmptyComponent={
-                    <Text style={styles.emptyText}>
+                    <Text style={[styles.emptyText, { color: themeColors.text.secondary }]}>
                       가족 구성원이 없습니다.
                     </Text>
                   }
@@ -482,47 +490,45 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background.secondary,
   },
   headerCard: {
     margin: spacing[4],
     marginBottom: spacing[2],
-    backgroundColor: colors.surface.primary,
     borderRadius: 24,
     ...shadows.medium,
     overflow: 'hidden',
-    minHeight: 'auto',
+    minHeight: 100,
   },
-  statsContainer: {
-    marginTop: spacing[3],
-    paddingTop: spacing[3],
-    paddingBottom: spacing[2],
-    borderTopWidth: 1,
-    borderTopColor: colors.border.medium,
-  },
-  statsRow: {
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    flexWrap: 'nowrap',
-    gap: spacing[2],
+    alignItems: 'flex-start',
+    gap: spacing[3],
+  },
+  titleContainer: {
+    flex: 1,
+  },
+  statsTextContainer: {
+    marginTop: spacing[3],
+    paddingTop: spacing[3],
+    paddingBottom: spacing[3],
+    borderTopWidth: 1,
+    borderTopColor: colors.border.medium,
+    minHeight: 50,
   },
   totalAmountText: {
     ...textStyles.body1,
     fontWeight: '600',
     color: colors.secondary[500],
-    flex: 1,
-    flexShrink: 1,
-    marginRight: spacing[2],
+    lineHeight: 24,
+    minHeight: 24,
   },
-  statsButton: {
+  headerStatsButton: {
     borderColor: colors.accent[500],
-    borderRadius: spacing[4],
-    paddingHorizontal: spacing[3],
-    flexShrink: 0,
-    minWidth: 70,
+    borderRadius: spacing[3],
+    alignSelf: 'flex-start',
   },
-  statsButtonLabel: {
+  headerStatsButtonLabel: {
     fontSize: 12,
     marginHorizontal: 0,
   },
@@ -541,7 +547,7 @@ const styles = StyleSheet.create({
   contentCard: {
     flex: 1,
     marginHorizontal: spacing[5],
-    marginBottom: spacing[5],
+    marginBottom: spacing[2],
   },
   cardContentStyle: {
     flex: 1,
@@ -556,7 +562,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: spacing[2],
     ...textStyles.body2,
-    color: colors.text.secondary,
   },
   ledgerItem: {
     borderBottomWidth: 1,
@@ -587,7 +592,6 @@ const styles = StyleSheet.create({
   emptyText: {
     ...textStyles.body2,
     textAlign: 'center',
-    color: colors.text.secondary,
     marginTop: spacing[10],
     lineHeight: 20,
   },
@@ -666,7 +670,11 @@ const styles = StyleSheet.create({
   },
   membersList: {
     flex: 1,
-    minHeight: 200,
+    minHeight: 400,
+  },
+  ledgerList: {
+    flex: 1,
+    minHeight: 400,
   },
   debugText: {
     ...textStyles.caption,
@@ -686,5 +694,107 @@ const styles = StyleSheet.create({
   memberItem: {
     borderBottomWidth: 1,
     borderBottomColor: colors.border.light,
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+  },
+  memberName: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  ownerBadgeNext: {
+    backgroundColor: colors.primary[500],
+  },
+  currentUserBadge: {
+    backgroundColor: colors.accent[500],
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+  },
+  memberName: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  ownerBadgeNext: {
+    backgroundColor: colors.primary[500],
+  },
+  ledgerTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+  },
+  ledgerDate: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text.primary,
+    minWidth: 50,
+  },
+  ledgerDescription: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.text.primary,
+    flex: 1,
+  },
+  ledgerDescriptionContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: spacing[1],
+  },
+  ledgerUser: {
+    fontSize: 12,
+    color: colors.text.secondary,
+  },
+  ledgerType: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  ledgerTableRow: {
+    paddingVertical: spacing[3],
+    paddingHorizontal: spacing[4],
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.light,
+  },
+  ledgerFirstRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing[1],
+  },
+  ledgerSecondRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  ledgerDateText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.text.secondary,
+  },
+  ledgerUserText: {
+    fontSize: 12,
+    color: colors.text.secondary,
+  },
+  ledgerTypeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  ledgerDescriptionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.text.primary,
+    flex: 1,
+    marginRight: spacing[3],
+  },
+  ledgerAmountText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  ledgerCategoryChip: {
+    marginLeft: spacing[2],
   },
 });

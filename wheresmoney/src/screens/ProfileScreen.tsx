@@ -14,6 +14,8 @@ import {
 import { StackNavigationProp } from '@react-navigation/stack';
 import { ProfileStackParamList } from '../types';
 import { useAuthStore } from '../stores/authStore';
+import { useSettingsStore } from '../stores/settingsStore';
+import { colors, darkColors } from '../theme';
 
 type ProfileScreenNavigationProp = StackNavigationProp<ProfileStackParamList, 'ProfileScreen'>;
 
@@ -23,6 +25,8 @@ interface Props {
 
 export default function ProfileScreen({ navigation }: Props) {
   const { user, signOut } = useAuthStore();
+  const { isDarkMode } = useSettingsStore();
+  const themeColors = isDarkMode ? darkColors : colors;
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -62,20 +66,20 @@ export default function ProfileScreen({ navigation }: Props) {
   };
 
   return (
-    <View style={styles.container}>
-      <Card style={styles.profileCard}>
+    <View style={[styles.container, { backgroundColor: themeColors.background.secondary }]}>
+      <Card style={[styles.profileCard, { backgroundColor: themeColors.surface.primary }]}>
         <Card.Content style={styles.profileContent}>
           <Avatar.Text 
             size={80} 
             label={user?.nickname?.charAt(0) || 'U'} 
             style={styles.avatar}
           />
-          <Title style={styles.nickname}>{user?.nickname || '사용자'}</Title>
-          <Text style={styles.email}>{user?.email || 'user@example.com'}</Text>
+          <Title style={[styles.nickname, { color: themeColors.text.primary }]}>{user?.nickname || '사용자'}</Title>
+          <Text style={[styles.email, { color: themeColors.text.secondary }]}>{user?.email || 'user@example.com'}</Text>
         </Card.Content>
       </Card>
 
-      <Card style={styles.menuCard}>
+      <Card style={[styles.menuCard, { backgroundColor: themeColors.surface.primary }]}>
         <Card.Content>
           <List.Item
             title="프로필 수정"
@@ -83,6 +87,14 @@ export default function ProfileScreen({ navigation }: Props) {
             right={(props) => <List.Icon {...props} icon="chevron-right" />}
             onPress={() => {
               navigation.navigate('EditProfile');
+            }}
+          />
+          <List.Item
+            title="설정"
+            left={(props) => <List.Icon {...props} icon="cog" />}
+            right={(props) => <List.Icon {...props} icon="chevron-right" />}
+            onPress={() => {
+              navigation.navigate('Settings');
             }}
           />
           <List.Item
@@ -157,7 +169,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#f5f5f5',
   },
   profileCard: {
     marginBottom: 20,
@@ -174,7 +185,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
   },
   email: {
-    color: '#666',
   },
   menuCard: {
     marginBottom: 20,

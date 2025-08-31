@@ -95,6 +95,44 @@ export const colors = {
   },
 };
 
+// Dark theme colors
+export const darkColors = {
+  ...colors,
+  
+  // Background - Dark theme
+  background: {
+    primary: '#121212',
+    secondary: '#1e1e1e',
+    tertiary: '#2d2d2d',
+    dark: '#000000',
+  },
+
+  // Text - Dark theme
+  text: {
+    primary: '#ffffff',
+    secondary: '#cccccc',
+    tertiary: '#999999',
+    inverse: '#000000',
+    accent: '#ff9999',
+  },
+
+  // Surface - Dark theme
+  surface: {
+    primary: '#1e1e1e',
+    secondary: '#2d2d2d',
+    elevated: '#333333',
+    dark: '#121212',
+  },
+
+  // Border - Dark theme
+  border: {
+    light: '#333333',
+    medium: '#444444',
+    dark: '#555555',
+  },
+
+};
+
 export const gradients = {
   primary: ['#0ea5e9', '#38bdf8', '#7dd3fc'],
   secondary: ['#2dd4bf', '#4dd4c4', '#7fecdb'],

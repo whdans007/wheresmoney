@@ -5,12 +5,14 @@ import { PaperProvider, ActivityIndicator, Text } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AppNavigator from './src/navigation/AppNavigator';
-import { lightTheme } from './src/constants/theme';
+import { lightTheme, darkTheme } from './src/constants/theme';
 import { AuthService } from './src/services/auth';
 import { useAuthStore } from './src/stores/authStore';
+import { useSettingsStore } from './src/stores/settingsStore';
 
 export default function App() {
   const { user, loading, setLoading } = useAuthStore();
+  const { isDarkMode } = useSettingsStore();
 
   useEffect(() => {
     // Check if user is already logged in
@@ -63,12 +65,12 @@ export default function App() {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
-          <PaperProvider theme={lightTheme}>
+          <PaperProvider theme={isDarkMode ? darkTheme : lightTheme}>
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
               <ActivityIndicator size="large" />
               <Text style={{ marginTop: 16 }}>Loading...</Text>
             </View>
-            <StatusBar style="auto" />
+            <StatusBar style={isDarkMode ? 'light' : 'auto'} />
           </PaperProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>
@@ -78,7 +80,7 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <PaperProvider theme={lightTheme}>
+        <PaperProvider theme={isDarkMode ? darkTheme : lightTheme}>
           <AppNavigator />
           <StatusBar style="auto" />
         </PaperProvider>

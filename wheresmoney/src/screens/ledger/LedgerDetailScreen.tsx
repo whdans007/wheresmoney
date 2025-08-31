@@ -13,7 +13,7 @@ import { RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { HomeStackParamList } from '../../types';
 import { LedgerService } from '../../services/ledger';
-import { DEFAULT_CATEGORIES } from '../../constants/categories';
+import { CategoryService, CategoryData } from '../../services/category';
 import { useAuthStore } from '../../stores/authStore';
 
 type LedgerDetailScreenRouteProp = RouteProp<HomeStackParamList, 'LedgerDetail'>;
@@ -29,18 +29,34 @@ export default function LedgerDetailScreen({ route, navigation }: Props) {
   const [entry, setEntry] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
+  const [categories, setCategories] = useState<CategoryData[]>([]);
   const { user } = useAuthStore();
 
   useEffect(() => {
+    loadCategories();
     loadEntry();
   }, [entryId]);
+
+  const loadCategories = async () => {
+    try {
+      const result = await CategoryService.getCategories();
+      if (result.success && result.categories) {
+        setCategories(result.categories);
+      }
+    } catch (error) {
+      console.error('카테고리 로딩 실패:', error);
+    }
+  };
 
   const loadEntry = async () => {
     try {
       setLoading(true);
+      console.log('Loading entry details for ID:', entryId);
       const result = await LedgerService.getLedgerEntry(entryId);
+      console.log('Entry result:', result);
       
       if (result.success && result.entry) {
+        console.log('Entry photo_url:', result.entry.photo_url);
         setEntry(result.entry);
       } else {
         Alert.alert('오류', result.error || '가계부 내용을 불러올 수 없습니다.');
@@ -121,7 +137,7 @@ export default function LedgerDetailScreen({ route, navigation }: Props) {
     );
   }
 
-  const category = DEFAULT_CATEGORIES.find(cat => cat.id === entry.category_id);
+  const category = categories.find(cat => cat.id === entry.category_id);
   const isOwner = entry.user_id === user?.id;
   const displayDate = new Date(entry.created_at).toLocaleDateString('ko-KR');
   const displayTime = new Date(entry.created_at).toLocaleTimeString('ko-KR');
@@ -167,7 +183,20 @@ export default function LedgerDetailScreen({ route, navigation }: Props) {
           <Text style={styles.description}>{entry.description}</Text>
 
           <Text style={styles.label}>사진</Text>
-          <Image source={{ uri: entry.photo_url }} style={styles.photo} />
+          {entry.photo_url ? (
+            <Image 
+              source={{ 
+                uri: entry.photo_url,
+                cache: 'reload'
+              }} 
+              style={styles.photo}
+              onError={(error) => console.error('Image load error:', error)}
+              onLoad={() => console.log('Image loaded successfully')}
+              resizeMode="contain"
+            />
+          ) : (
+            <Text style={styles.errorText}>사진을 불러올 수 없습니다.</Text>
+          )}
 
           {isOwner && (
             <View style={styles.buttonContainer}>
@@ -271,7 +300,7 @@ const styles = StyleSheet.create({
   },
   photo: {
     width: '100%',
-    height: 200,
+    height: 500,
     borderRadius: 8,
     marginBottom: 24,
   },

@@ -1,5 +1,5 @@
 import { MD3LightTheme, MD3DarkTheme } from 'react-native-paper';
-import { colors as Colors } from '../theme/colors';
+import { colors as Colors, darkColors } from '../theme/colors';
 
 export const lightTheme = {
   ...MD3LightTheme,
@@ -25,13 +25,18 @@ export const darkTheme = {
   ...MD3DarkTheme,
   colors: {
     ...MD3DarkTheme.colors,
-    primary: Colors.primary[400],
-    primaryContainer: Colors.primary[800],
-    secondary: Colors.secondary[400],
-    secondaryContainer: Colors.secondary[800],
-    surface: Colors.background.dark,
-    background: '#000000',
-    error: Colors.error,
+    primary: darkColors.primary[400],
+    primaryContainer: darkColors.primary[800],
+    secondary: darkColors.secondary[400],
+    secondaryContainer: darkColors.secondary[800],
+    surface: darkColors.surface.primary,
+    background: darkColors.background.primary,
+    error: darkColors.error,
+    onPrimary: darkColors.text.inverse,
+    onSecondary: darkColors.text.primary,
+    onSurface: darkColors.text.primary,
+    onBackground: darkColors.text.primary,
+    onError: darkColors.text.inverse,
   },
   roundness: 8,
 };

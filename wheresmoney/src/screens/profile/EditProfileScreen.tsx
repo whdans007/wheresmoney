@@ -11,10 +11,14 @@ import {
 } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../stores/authStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { supabase } from '../../services/supabase';
+import { colors, darkColors } from '../../theme';
 
 export default function EditProfileScreen({ navigation }: any) {
   const { user, setUser } = useAuthStore();
+  const { isDarkMode } = useSettingsStore();
+  const themeColors = isDarkMode ? darkColors : colors;
   const [nickname, setNickname] = useState(user?.nickname || '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -201,10 +205,10 @@ export default function EditProfileScreen({ navigation }: any) {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <Card style={styles.card}>
+    <ScrollView style={[styles.container, { backgroundColor: themeColors.background.secondary }]}>
+      <Card style={[styles.card, { backgroundColor: themeColors.surface.primary }]}>
         <Card.Content>
-          <Title style={styles.title}>프로필 편집</Title>
+          <Title style={[styles.title, { color: themeColors.text.primary }]}>프로필 편집</Title>
 
           {/* 아바타 이미지 */}
           <View style={styles.avatarContainer}>
@@ -247,7 +251,7 @@ export default function EditProfileScreen({ navigation }: any) {
           )}
 
           {/* 비밀번호 변경 섹션 */}
-          <Title style={styles.sectionTitle}>비밀번호 변경 (선택사항)</Title>
+          <Title style={[styles.sectionTitle, { color: themeColors.text.primary }]}>비밀번호 변경 (선택사항)</Title>
 
           <TextInput
             label="현재 비밀번호"
@@ -310,7 +314,6 @@ export default function EditProfileScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   card: {
     margin: 20,

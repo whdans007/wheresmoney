@@ -64,6 +64,7 @@ export type MainTabParamList = {
 export type ProfileStackParamList = {
   ProfileScreen: undefined;
   EditProfile: undefined;
+  Settings: undefined;
 };
 
 export type AuthStackParamList = {

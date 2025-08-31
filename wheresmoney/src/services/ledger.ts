@@ -19,28 +19,41 @@ export class LedgerService {
   // 이미지를 Supabase Storage에 업로드
   static async uploadImage(imageUri: string, fileName: string): Promise<{ success: boolean; url?: string; error?: string }> {
     try {
-      const response = await fetch(imageUri);
-      const blob = await response.blob();
-      const arrayBuffer = await blob.arrayBuffer();
+      console.log('Starting image upload:', { imageUri, fileName });
+      
+      // React Native에서 이미지를 FormData로 변환
+      const formData = new FormData();
+      const imageFile = {
+        uri: imageUri,
+        type: 'image/jpeg',
+        name: fileName,
+      } as any;
+      
+      formData.append('file', imageFile);
+      
+      console.log('FormData prepared, uploading to Supabase...');
       
       const { data, error } = await supabase.storage
         .from('ledger-photos')
-        .upload(fileName, arrayBuffer, {
+        .upload(fileName, formData, {
           contentType: 'image/jpeg',
           cacheControl: '3600',
           upsert: false
         });
 
       if (error) {
-        console.error('이미지 업로드 오류:', error);
+        console.error('Supabase 업로드 오류:', error);
         return { success: false, error: error.message };
       }
+
+      console.log('Upload successful:', data);
 
       // 공개 URL 생성
       const { data: { publicUrl } } = supabase.storage
         .from('ledger-photos')
         .getPublicUrl(data.path);
 
+      console.log('Public URL generated:', publicUrl);
       return { success: true, url: publicUrl };
     } catch (error: any) {
       console.error('이미지 업로드 예외:', error);
@@ -51,19 +64,29 @@ export class LedgerService {
   // 가계부 항목 생성
   static async createLedgerEntry(entryData: CreateLedgerEntryData): Promise<{ success: boolean; entry?: LedgerEntry; error?: string }> {
     try {
+      console.log('Creating ledger entry with data:', entryData);
+      
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
+        console.error('User not authenticated');
         return { success: false, error: '로그인이 필요합니다.' };
       }
+
+      console.log('User authenticated:', user.id);
 
       // 1. 이미지 업로드
       const timestamp = new Date().getTime();
       const fileName = `${user.id}/${entryData.familyId}/${timestamp}.jpg`;
       
+      console.log('Starting image upload with fileName:', fileName);
       const uploadResult = await this.uploadImage(entryData.imageUri, fileName);
+      
       if (!uploadResult.success || !uploadResult.url) {
+        console.error('Image upload failed:', uploadResult.error);
         return { success: false, error: uploadResult.error || '이미지 업로드에 실패했습니다.' };
       }
+
+      console.log('Image upload successful, URL:', uploadResult.url);
 
       // 2. 가계부 항목 생성
       const ledgerData: LedgerInsert = {
@@ -76,6 +99,8 @@ export class LedgerService {
         date: entryData.date || new Date().toISOString().split('T')[0],
       };
 
+      console.log('Inserting ledger data:', ledgerData);
+
       const { data: entry, error: insertError } = await supabase
         .from('ledger_entries')
         .insert(ledgerData)
@@ -84,13 +109,14 @@ export class LedgerService {
 
       if (insertError) {
         console.error('가계부 저장 오류:', insertError);
-        return { success: false, error: insertError.message };
+        return { success: false, error: `데이터베이스 저장 실패: ${insertError.message}` };
       }
 
+      console.log('Ledger entry created successfully:', entry);
       return { success: true, entry };
     } catch (error: any) {
       console.error('가계부 생성 예외:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: `가계부 생성 중 오류: ${error.message}` };
     }
   }
 
@@ -257,6 +283,71 @@ export class LedgerService {
       return { success: true, totalAmount, categoryStats };
     } catch (error: any) {
       console.error('월별 통계 예외:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // 멤버별 통계
+  static async getMemberStats(familyId: string, year: number, month: number): Promise<{ 
+    success: boolean; 
+    memberStats?: { user_id: string; nickname: string; total_expense: number; total_income: number; entry_count: number }[]; 
+    error?: string;
+  }> {
+    try {
+      const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
+      const endDate = `${year}-${month.toString().padStart(2, '0')}-31`;
+
+      const { data: entries, error } = await supabase
+        .from('ledger_entries')
+        .select(`
+          amount,
+          user_id,
+          users!inner(id, nickname)
+        `)
+        .eq('family_id', familyId)
+        .gte('date', startDate)
+        .lte('date', endDate);
+
+      if (error) {
+        console.error('멤버별 통계 조회 오류:', error);
+        return { success: false, error: error.message };
+      }
+
+      const memberMap = new Map<string, { 
+        nickname: string; 
+        total_expense: number; 
+        total_income: number; 
+        entry_count: number 
+      }>();
+
+      entries?.forEach(entry => {
+        const userId = entry.user_id;
+        const nickname = entry.users?.nickname || '사용자';
+        const existing = memberMap.get(userId) || { 
+          nickname, 
+          total_expense: 0, 
+          total_income: 0, 
+          entry_count: 0 
+        };
+
+        if (entry.amount > 0) {
+          existing.total_expense += entry.amount;
+        } else {
+          existing.total_income += Math.abs(entry.amount);
+        }
+        existing.entry_count += 1;
+
+        memberMap.set(userId, existing);
+      });
+
+      const memberStats = Array.from(memberMap.entries()).map(([user_id, stats]) => ({
+        user_id,
+        ...stats,
+      }));
+
+      return { success: true, memberStats };
+    } catch (error: any) {
+      console.error('멤버별 통계 예외:', error);
       return { success: false, error: error.message };
     }
   }

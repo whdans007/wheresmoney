@@ -12,7 +12,9 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { HomeStackParamList } from '../../types';
 import { useFamilyStore } from '../../stores/familyStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { FamilyService } from '../../services/family';
+import { colors, darkColors } from '../../theme';
 
 type HomeScreenNavigationProp = StackNavigationProp<HomeStackParamList, 'HomeScreen'>;
 
@@ -22,6 +24,8 @@ interface Props {
 
 export default function HomeScreen({ navigation }: Props) {
   const { families, loading, setFamilies, setLoading } = useFamilyStore();
+  const { isDarkMode } = useSettingsStore();
+  const themeColors = isDarkMode ? darkColors : colors;
 
   const loadFamilies = async () => {
     setLoading(true);
@@ -56,11 +60,11 @@ export default function HomeScreen({ navigation }: Props) {
   );
 
   return (
-    <View style={styles.container}>
-      <Card style={styles.welcomeCard}>
+    <View style={[styles.container, { backgroundColor: themeColors.background.secondary }]}>
+      <Card style={[styles.welcomeCard, { backgroundColor: themeColors.surface.primary }]}>
         <Card.Content>
-          <Title>안녕하세요! 👋</Title>
-          <Text>가족과 함께 가계부를 관리해보세요</Text>
+          <Title style={{ color: themeColors.text.primary }}>안녕하세요! 👋</Title>
+          <Text style={{ color: themeColors.text.secondary }}>가족과 함께 가계부를 관리해보세요</Text>
         </Card.Content>
       </Card>
 
@@ -84,16 +88,16 @@ export default function HomeScreen({ navigation }: Props) {
         </Button>
       </View>
 
-      <Card style={styles.familiesCard}>
+      <Card style={[styles.familiesCard, { backgroundColor: themeColors.surface.primary }]}>
         <Card.Content>
-          <Title style={styles.sectionTitle}>내 가족방</Title>
+          <Title style={[styles.sectionTitle, { color: themeColors.text.primary }]}>내 가족방</Title>
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="small" />
-              <Text style={styles.loadingText}>가족방 불러오는 중...</Text>
+              <Text style={[styles.loadingText, { color: themeColors.text.secondary }]}>가족방 불러오는 중...</Text>
             </View>
           ) : families.length === 0 ? (
-            <Text style={styles.emptyText}>
+            <Text style={[styles.emptyText, { color: themeColors.text.secondary }]}>
               아직 가족방이 없습니다.{'\n'}
               새 가족방을 만들어보세요!
             </Text>
@@ -115,7 +119,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#f5f5f5',
   },
   welcomeCard: {
     marginBottom: 20,
@@ -137,7 +140,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     textAlign: 'center',
-    color: '#666',
     marginTop: 20,
     lineHeight: 20,
   },
@@ -149,6 +151,5 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginLeft: 12,
-    color: '#666',
   },
 });

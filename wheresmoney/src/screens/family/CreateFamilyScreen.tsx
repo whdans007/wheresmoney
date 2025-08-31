@@ -11,6 +11,8 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { HomeStackParamList } from '../../types';
 import { FamilyService } from '../../services/family';
 import { useFamilyStore } from '../../stores/familyStore';
+import { useSettingsStore } from '../../stores/settingsStore';
+import { colors, darkColors } from '../../theme';
 
 type CreateFamilyScreenNavigationProp = StackNavigationProp<HomeStackParamList, 'CreateFamily'>;
 
@@ -24,6 +26,8 @@ export default function CreateFamilyScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const { addFamily } = useFamilyStore();
+  const { isDarkMode } = useSettingsStore();
+  const themeColors = isDarkMode ? darkColors : colors;
 
   const handleCreateFamily = async () => {
     setLoading(true);
@@ -52,10 +56,10 @@ export default function CreateFamilyScreen({ navigation }: Props) {
   };
 
   return (
-    <View style={styles.container}>
-      <Card style={styles.card}>
+    <View style={[styles.container, { backgroundColor: themeColors.background.secondary }]}>
+      <Card style={[styles.card, { backgroundColor: themeColors.surface.primary }]}>
         <Card.Content>
-          <Title style={styles.title}>새 가족방 만들기</Title>
+          <Title style={[styles.title, { color: themeColors.text.primary }]}>새 가족방 만들기</Title>
 
           <TextInput
             label="가족방 이름"
@@ -100,7 +104,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#f5f5f5',
   },
   card: {
     padding: 20,

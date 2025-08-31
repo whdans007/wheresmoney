@@ -1,3 +1,5 @@
+// TODO: 이 ID들을 데이터베이스의 실제 UUID로 교체해야 함
+// 임시로 문자열을 사용하고 있음 - 실제 환경에서는 DB에서 동적으로 로드해야 함
 export const DEFAULT_CATEGORIES = [
   { id: '1', name: '식비', color: '#FF6B6B', icon: 'food' },
   { id: '2', name: '교통비', color: '#4ECDC4', icon: 'car' },

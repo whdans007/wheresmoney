@@ -17,6 +17,8 @@ import { HomeStackParamList } from '../../types';
 import { LedgerService } from '../../services/ledger';
 import { DEFAULT_CATEGORIES } from '../../constants/categories';
 import { useFamilyStore } from '../../stores/familyStore';
+import { useSettingsStore } from '../../stores/settingsStore';
+import { colors, darkColors } from '../../theme';
 
 type StatsScreenNavigationProp = StackNavigationProp<HomeStackParamList, 'Stats'>;
 type StatsScreenRouteProp = RouteProp<HomeStackParamList, 'Stats'>;
@@ -41,11 +43,22 @@ interface CategoryStats {
   legendFontSize: number;
 }
 
+interface MemberStats {
+  user_id: string;
+  nickname: string;
+  total_expense: number;
+  total_income: number;
+  entry_count: number;
+}
+
 export default function StatsScreen({ navigation, route }: Props) {
   const { familyId } = route.params;
+  const { isDarkMode } = useSettingsStore();
+  const themeColors = isDarkMode ? darkColors : colors;
   const [selectedPeriod, setSelectedPeriod] = useState<'month' | 'quarter' | 'year'>('month');
   const [monthlyStats, setMonthlyStats] = useState<MonthlyStats[]>([]);
   const [categoryStats, setCategoryStats] = useState<CategoryStats[]>([]);
+  const [memberStats, setMemberStats] = useState<MemberStats[]>([]);
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [loading, setLoading] = useState(false);
   
@@ -71,20 +84,22 @@ export default function StatsScreen({ navigation, route }: Props) {
         
         const result = await LedgerService.getMonthlyStats(familyId, year, month);
         
-        if (result.success && result.stats) {
+        if (result.success && result.totalAmount !== undefined) {
           const monthStats: MonthlyStats = {
             month: `${year}-${month.toString().padStart(2, '0')}`,
-            total: result.stats.totalAmount,
-            categories: result.stats.categoryBreakdown
+            total: result.totalAmount,
+            categories: {}
           };
           
           monthlyData.push(monthStats);
-          totalAmount += result.stats.totalAmount;
+          totalAmount += result.totalAmount;
           
           // 카테고리별 누적
-          Object.entries(result.stats.categoryBreakdown).forEach(([categoryId, amount]) => {
-            categoryTotals[categoryId] = (categoryTotals[categoryId] || 0) + amount;
-          });
+          if (result.categoryStats) {
+            result.categoryStats.forEach(stat => {
+              categoryTotals[stat.category_id] = (categoryTotals[stat.category_id] || 0) + stat.total;
+            });
+          }
         } else {
           monthlyData.push({
             month: `${year}-${month.toString().padStart(2, '0')}`,
@@ -107,7 +122,7 @@ export default function StatsScreen({ navigation, route }: Props) {
             amount: amount,
             color: category.color,
             population: totalAmount > 0 ? Math.round((amount / totalAmount) * 100) : 0,
-            legendFontColor: '#333',
+            legendFontColor: isDarkMode ? '#ffffff' : '#333',
             legendFontSize: 12,
           });
         }
@@ -116,6 +131,33 @@ export default function StatsScreen({ navigation, route }: Props) {
       // 금액 순으로 정렬
       categoryStatsData.sort((a, b) => b.amount - a.amount);
       setCategoryStats(categoryStatsData);
+
+      // 멤버별 통계 로드
+      const memberStatsData: MemberStats[] = [];
+      for (let i = 0; i < months; i++) {
+        const date = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        
+        const memberResult = await LedgerService.getMemberStats(familyId, year, month);
+        
+        if (memberResult.success && memberResult.memberStats) {
+          memberResult.memberStats.forEach(memberStat => {
+            const existingMember = memberStatsData.find(m => m.user_id === memberStat.user_id);
+            if (existingMember) {
+              existingMember.total_expense += memberStat.total_expense;
+              existingMember.total_income += memberStat.total_income;
+              existingMember.entry_count += memberStat.entry_count;
+            } else {
+              memberStatsData.push({ ...memberStat });
+            }
+          });
+        }
+      }
+
+      // 지출 금액 순으로 정렬
+      memberStatsData.sort((a, b) => b.total_expense - a.total_expense);
+      setMemberStats(memberStatsData);
 
     } catch (error) {
       console.log('Load stats error:', error);
@@ -130,19 +172,19 @@ export default function StatsScreen({ navigation, route }: Props) {
   const screenWidth = Dimensions.get('window').width;
   
   const chartConfig = {
-    backgroundColor: '#ffffff',
-    backgroundGradientFrom: '#ffffff',
-    backgroundGradientTo: '#ffffff',
+    backgroundColor: themeColors.surface.primary,
+    backgroundGradientFrom: themeColors.surface.primary,
+    backgroundGradientTo: themeColors.surface.secondary,
     decimalPlaces: 0,
-    color: (opacity = 1) => `rgba(98, 0, 238, ${opacity})`,
-    labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+    color: (opacity = 1) => `rgba(${isDarkMode ? '156, 204, 101' : '98, 0, 238'}, ${opacity})`,
+    labelColor: (opacity = 1) => `rgba(${isDarkMode ? '255, 255, 255' : '0, 0, 0'}, ${opacity})`,
     style: {
       borderRadius: 16
     },
     propsForDots: {
       r: '6',
       strokeWidth: '2',
-      stroke: '#6200EE'
+      stroke: isDarkMode ? '#9cc465' : '#6200EE'
     }
   };
 
@@ -174,19 +216,19 @@ export default function StatsScreen({ navigation, route }: Props) {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={[styles.loadingContainer, { backgroundColor: themeColors.background.secondary }]}>
         <ActivityIndicator size="large" />
-        <Text style={styles.loadingText}>통계 로딩 중...</Text>
+        <Text style={[styles.loadingText, { color: themeColors.text.secondary }]}>통계 로딩 중...</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <Card style={styles.headerCard}>
+    <ScrollView style={[styles.container, { backgroundColor: themeColors.background.secondary }]}>
+      <Card style={[styles.headerCard, { backgroundColor: themeColors.surface.primary }]}>
         <Card.Content>
-          <Title>{family?.name || '가족방'} 통계</Title>
-          <Paragraph>가계부 지출 분석 및 통계입니다.</Paragraph>
+          <Title style={{ color: themeColors.text.primary }}>{family?.name || '가족방'} 통계</Title>
+          <Paragraph style={{ color: themeColors.text.secondary }}>가계부 지출 분석 및 통계입니다.</Paragraph>
         </Card.Content>
       </Card>
 
@@ -206,12 +248,12 @@ export default function StatsScreen({ navigation, route }: Props) {
         ))}
       </View>
 
-      <Card style={styles.summaryCard}>
+      <Card style={[styles.summaryCard, { backgroundColor: themeColors.surface.primary }]}>
         <Card.Content>
-          <Title style={styles.totalAmount}>
+          <Title style={[styles.totalAmount, { color: themeColors.primary }]}>
             총 지출: {totalExpenses.toLocaleString()}원
           </Title>
-          <Text style={styles.periodText}>
+          <Text style={[styles.periodText, { color: themeColors.text.secondary }]}>
             ({periodLabels[selectedPeriod]} 기준)
           </Text>
         </Card.Content>
@@ -219,9 +261,9 @@ export default function StatsScreen({ navigation, route }: Props) {
 
       {monthlyStats.length > 0 && monthlyStats.some(stat => stat.total > 0) && (
         <>
-          <Card style={styles.chartCard}>
+          <Card style={[styles.chartCard, { backgroundColor: themeColors.surface.primary }]}>
             <Card.Content>
-              <Title style={styles.chartTitle}>월별 지출 추이</Title>
+              <Title style={[styles.chartTitle, { color: themeColors.text.primary }]}>월별 지출 추이</Title>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <LineChart
                   data={lineData}
@@ -236,9 +278,9 @@ export default function StatsScreen({ navigation, route }: Props) {
             </Card.Content>
           </Card>
 
-          <Card style={styles.chartCard}>
+          <Card style={[styles.chartCard, { backgroundColor: themeColors.surface.primary }]}>
             <Card.Content>
-              <Title style={styles.chartTitle}>월별 지출 비교</Title>
+              <Title style={[styles.chartTitle, { color: themeColors.text.primary }]}>월별 지출 비교</Title>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <BarChart
                   data={barData}
@@ -258,7 +300,7 @@ export default function StatsScreen({ navigation, route }: Props) {
       {categoryStats.length > 0 && (
         <Card style={styles.chartCard}>
           <Card.Content>
-            <Title style={styles.chartTitle}>카테고리별 지출</Title>
+            <Title style={[styles.chartTitle, { color: themeColors.text.primary }]}>카테고리별 지출</Title>
             <PieChart
               data={categoryStats}
               width={screenWidth - 80}
@@ -280,13 +322,13 @@ export default function StatsScreen({ navigation, route }: Props) {
                         { backgroundColor: category.color }
                       ]} 
                     />
-                    <Text style={styles.categoryName}>{category.name}</Text>
+                    <Text style={[styles.categoryName, { color: themeColors.text.primary }]}>{category.name}</Text>
                   </View>
                   <View style={styles.categoryAmount}>
-                    <Text style={styles.amountText}>
+                    <Text style={[styles.amountText, { color: themeColors.text.primary }]}>
                       {category.amount.toLocaleString()}원
                     </Text>
-                    <Text style={styles.percentText}>
+                    <Text style={[styles.percentText, { color: themeColors.text.secondary }]}>
                       ({category.population}%)
                     </Text>
                   </View>
@@ -297,10 +339,46 @@ export default function StatsScreen({ navigation, route }: Props) {
         </Card>
       )}
 
-      {totalExpenses === 0 && (
-        <Card style={styles.emptyCard}>
+      {memberStats.length > 0 && (
+        <Card style={styles.chartCard}>
           <Card.Content>
-            <Text style={styles.emptyText}>
+            <Title style={[styles.chartTitle, { color: themeColors.text.primary }]}>멤버별 지출/수입</Title>
+            <View style={styles.memberStatsList}>
+              {memberStats.map((member, index) => (
+                <View key={member.user_id} style={[styles.memberStatItem, { backgroundColor: themeColors.surface.secondary }]}>
+                  <View style={styles.memberInfo}>
+                    <Text style={[styles.memberName, { color: themeColors.text.primary }]}>{member.nickname}</Text>
+                    <Text style={[styles.memberEntryCount, { color: themeColors.text.secondary }]}>
+                      {member.entry_count}건
+                    </Text>
+                  </View>
+                  <View style={styles.memberAmounts}>
+                    <View style={styles.amountRow}>
+                      <Text style={[styles.expenseLabel, { color: themeColors.text.secondary }]}>지출</Text>
+                      <Text style={[styles.amountValue, styles.expenseAmount]}>
+                        {member.total_expense.toLocaleString()}원
+                      </Text>
+                    </View>
+                    {member.total_income > 0 && (
+                      <View style={styles.amountRow}>
+                        <Text style={[styles.incomeLabel, { color: themeColors.text.secondary }]}>수입</Text>
+                        <Text style={[styles.amountValue, styles.incomeAmount]}>
+                          {member.total_income.toLocaleString()}원
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              ))}
+            </View>
+          </Card.Content>
+        </Card>
+      )}
+
+      {totalExpenses === 0 && (
+        <Card style={[styles.emptyCard, { backgroundColor: themeColors.surface.primary }]}>
+          <Card.Content>
+            <Text style={[styles.emptyText, { color: themeColors.text.secondary }]}>
               선택한 기간에 지출 내역이 없습니다.{'\n'}
               가계부를 작성해보세요!
             </Text>
@@ -314,7 +392,6 @@ export default function StatsScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   loadingContainer: {
     flex: 1,
@@ -323,7 +400,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 16,
-    color: '#666',
   },
   headerCard: {
     margin: 16,
@@ -347,12 +423,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   totalAmount: {
-    color: '#2196F3',
     textAlign: 'center',
   },
   periodText: {
     textAlign: 'center',
-    color: '#666',
     marginTop: 4,
   },
   chartCard: {
@@ -401,7 +475,6 @@ const styles = StyleSheet.create({
   },
   percentText: {
     fontSize: 12,
-    color: '#666',
     marginTop: 2,
   },
   emptyCard: {
@@ -410,7 +483,57 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     textAlign: 'center',
-    color: '#666',
     lineHeight: 20,
+  },
+  memberStatsList: {
+    gap: 12,
+  },
+  memberStatItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  memberInfo: {
+    flex: 1,
+  },
+  memberName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  memberEntryCount: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  memberAmounts: {
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  amountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  expenseLabel: {
+    fontSize: 12,
+    minWidth: 30,
+  },
+  incomeLabel: {
+    fontSize: 12,
+    minWidth: 30,
+  },
+  amountValue: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    minWidth: 80,
+    textAlign: 'right',
+  },
+  expenseAmount: {
+    color: '#FF6B6B',
+  },
+  incomeAmount: {
+    color: '#4ECDC4',
   },
 });
