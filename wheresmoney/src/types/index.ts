@@ -82,4 +82,5 @@ export type HomeStackParamList = {
   LedgerDetail: { entryId: string };
   Invite: { familyId: string };
   Stats: { familyId: string };
+  MemberStats: { familyId: string; memberId: string; memberName: string };
 };

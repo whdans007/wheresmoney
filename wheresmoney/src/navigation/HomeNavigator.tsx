@@ -13,6 +13,7 @@ import AddLedgerEntryScreen from '../screens/ledger/AddLedgerEntryScreen';
 import LedgerDetailScreen from '../screens/ledger/LedgerDetailScreen';
 import InviteScreen from '../screens/family/InviteScreen';
 import StatsScreen from '../screens/stats/StatsScreen';
+import MemberStatsScreen from '../screens/stats/MemberStatsScreen';
 
 const Stack = createStackNavigator<HomeStackParamList>();
 
@@ -72,6 +73,11 @@ export default function HomeNavigator() {
         name="Stats" 
         component={StatsScreen}
         options={{ title: '통계' }}
+      />
+      <Stack.Screen 
+        name="MemberStats" 
+        component={MemberStatsScreen}
+        options={({ route }) => ({ title: `${route.params.memberName}님 통계` })}
       />
     </Stack.Navigator>
   );

@@ -565,7 +565,7 @@ const styles = StyleSheet.create({
   },
   headerCard: {
     margin: spacing[4],
-    marginBottom: spacing[2],
+    marginBottom: spacing[1], // 하단 마진 더 줄임 (4px)
     borderRadius: 24,
     ...shadows.medium,
     overflow: 'hidden',
@@ -606,8 +606,9 @@ const styles = StyleSheet.create({
   },
   tabContainer: {
     flexDirection: 'row',
-    paddingHorizontal: spacing[5],
-    marginBottom: spacing[2],
+    paddingHorizontal: spacing[4], // 좌우 패딩 줄임 (20px → 16px)
+    marginBottom: spacing[1], // 하단 마진 줄임 (8px → 4px)
+    marginTop: 0, // 상단 마진 제거
   },
   tabButton: {
     flex: 1,
@@ -709,14 +710,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingBottom: spacing[3],
-    marginBottom: spacing[2],
+    paddingTop: spacing[3], // 상단 여백 줄임 (12px)
+    paddingBottom: spacing[2], // 하단 여백 줄임 (8px)
+    marginBottom: spacing[2], // 마진 줄임 (8px)
     borderBottomWidth: 1,
     borderBottomColor: colors.border.light,
+    minHeight: 50, // 높이 줄임
+    overflow: 'visible',
+    flex: 0,
   },
   memberTitle: {
-    ...textStyles.h4,
-    fontSize: spacing[4],
+    fontSize: 18,
+    fontWeight: '500',
+    minHeight: 22, // 최소 높이 줄임
+    lineHeight: 22, // lineHeight 줄임
+    textAlignVertical: 'center',
+    includeFontPadding: false,
+    paddingVertical: 2, // 수직 패딩 줄임
   },
   inviteButton: {
     borderRadius: spacing[3],
@@ -732,6 +742,7 @@ const styles = StyleSheet.create({
   },
   ownerButtonsContainer: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing[2],
   },
   deleteButton: {
