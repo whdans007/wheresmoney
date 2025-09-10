@@ -121,23 +121,42 @@ export class LedgerService {
   }
 
   // 특정 가계부 항목 조회
-  static async getLedgerEntry(entryId: string): Promise<{ success: boolean; entry?: LedgerEntry; error?: string }> {
+  static async getLedgerEntry(entryId: string): Promise<{ success: boolean; entry?: LedgerEntry & { users?: { id: string; nickname: string; avatar_url?: string } }; error?: string }> {
     try {
-      const { data: entry, error } = await supabase
+      // 1단계: 가계부 항목 조회
+      const { data: entry, error: entryError } = await supabase
         .from('ledger_entries')
-        .select(`
-          *,
-          users!inner(id, nickname, avatar_url)
-        `)
+        .select('*')
         .eq('id', entryId)
         .single();
 
-      if (error) {
-        console.error('가계부 조회 오류:', error);
-        return { success: false, error: error.message };
+      if (entryError) {
+        console.error('가계부 조회 오류:', entryError);
+        return { success: false, error: entryError.message };
       }
 
-      return { success: true, entry };
+      if (!entry) {
+        return { success: false, error: '가계부 항목을 찾을 수 없습니다.' };
+      }
+
+      // 2단계: 사용자 정보 별도 조회
+      const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('id, nickname, avatar_url')
+        .eq('id', entry.user_id)
+        .single();
+
+      if (userError) {
+        console.warn('사용자 정보 조회 실패:', userError);
+      }
+
+      // 3단계: 데이터 조합
+      const result = {
+        ...entry,
+        users: user || { id: entry.user_id, nickname: '사용자', avatar_url: null }
+      };
+
+      return { success: true, entry: result };
     } catch (error: any) {
       console.error('가계부 조회 예외:', error);
       return { success: false, error: error.message };
@@ -145,24 +164,48 @@ export class LedgerService {
   }
 
   // 가족의 가계부 항목들 조회
-  static async getLedgerEntries(familyId: string, limit = 50, offset = 0): Promise<{ success: boolean; entries?: LedgerEntry[]; error?: string }> {
+  static async getLedgerEntries(familyId: string, limit = 50, offset = 0): Promise<{ success: boolean; entries?: (LedgerEntry & { users?: { id: string; nickname: string; avatar_url?: string } })[]; error?: string }> {
     try {
-      const { data: entries, error } = await supabase
+      // 1단계: 가계부 항목들 조회
+      const { data: entries, error: entriesError } = await supabase
         .from('ledger_entries')
-        .select(`
-          *,
-          users!inner(id, nickname, avatar_url)
-        `)
+        .select('*')
         .eq('family_id', familyId)
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
 
-      if (error) {
-        console.error('가계부 조회 오류:', error);
-        return { success: false, error: error.message };
+      if (entriesError) {
+        console.error('가계부 조회 오류:', entriesError);
+        return { success: false, error: entriesError.message };
       }
 
-      return { success: true, entries: entries || [] };
+      if (!entries || entries.length === 0) {
+        return { success: true, entries: [] };
+      }
+
+      // 2단계: 고유한 사용자 ID 추출
+      const uniqueUserIds = [...new Set(entries.map(entry => entry.user_id))];
+
+      // 3단계: 사용자 정보 별도 조회
+      const { data: users, error: usersError } = await supabase
+        .from('users')
+        .select('id, nickname, avatar_url')
+        .in('id', uniqueUserIds);
+
+      if (usersError) {
+        console.warn('사용자 정보 조회 실패:', usersError);
+      }
+
+      // 4단계: 데이터 조합
+      const result = entries.map(entry => {
+        const user = users?.find(u => u.id === entry.user_id);
+        return {
+          ...entry,
+          users: user || { id: entry.user_id, nickname: '사용자', avatar_url: null }
+        };
+      });
+
+      return { success: true, entries: result };
     } catch (error: any) {
       console.error('가계부 조회 예외:', error);
       return { success: false, error: error.message };
@@ -249,8 +292,10 @@ export class LedgerService {
     error?: string;
   }> {
     try {
+      // 정확한 월말 날짜 계산
       const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
-      const endDate = `${year}-${month.toString().padStart(2, '0')}-31`;
+      const lastDayOfMonth = new Date(year, month, 0).getDate(); // 해당 월의 마지막 날
+      const endDate = `${year}-${month.toString().padStart(2, '0')}-${lastDayOfMonth.toString().padStart(2, '0')}`;
 
       const { data: entries, error } = await supabase
         .from('ledger_entries')
@@ -294,25 +339,43 @@ export class LedgerService {
     error?: string;
   }> {
     try {
+      // 정확한 월말 날짜 계산
       const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
-      const endDate = `${year}-${month.toString().padStart(2, '0')}-31`;
+      const lastDayOfMonth = new Date(year, month, 0).getDate(); // 해당 월의 마지막 날
+      const endDate = `${year}-${month.toString().padStart(2, '0')}-${lastDayOfMonth.toString().padStart(2, '0')}`;
 
-      const { data: entries, error } = await supabase
+      // 1단계: 가계부 항목만 먼저 조회 (RLS 정책 적용)
+      const { data: entries, error: entriesError } = await supabase
         .from('ledger_entries')
-        .select(`
-          amount,
-          user_id,
-          users!inner(id, nickname)
-        `)
+        .select('amount, user_id')
         .eq('family_id', familyId)
         .gte('date', startDate)
         .lte('date', endDate);
 
-      if (error) {
-        console.error('멤버별 통계 조회 오류:', error);
-        return { success: false, error: error.message };
+      if (entriesError) {
+        console.error('가계부 항목 조회 오류:', entriesError);
+        return { success: false, error: entriesError.message };
       }
 
+      if (!entries || entries.length === 0) {
+        return { success: true, memberStats: [] };
+      }
+
+      // 2단계: 고유한 사용자 ID 추출
+      const uniqueUserIds = [...new Set(entries.map(entry => entry.user_id))];
+
+      // 3단계: 사용자 정보 별도 조회
+      const { data: users, error: usersError } = await supabase
+        .from('users')
+        .select('id, nickname')
+        .in('id', uniqueUserIds);
+
+      if (usersError) {
+        console.error('사용자 정보 조회 오류:', usersError);
+        return { success: false, error: usersError.message };
+      }
+
+      // 4단계: 데이터 조합 및 통계 계산
       const memberMap = new Map<string, { 
         nickname: string; 
         total_expense: number; 
@@ -320,9 +383,11 @@ export class LedgerService {
         entry_count: number 
       }>();
 
-      entries?.forEach(entry => {
+      entries.forEach(entry => {
         const userId = entry.user_id;
-        const nickname = entry.users?.nickname || '사용자';
+        const user = users?.find(u => u.id === userId);
+        const nickname = user?.nickname || '사용자';
+        
         const existing = memberMap.get(userId) || { 
           nickname, 
           total_expense: 0, 

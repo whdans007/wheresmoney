@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, FlatList, Image, Alert } from 'react-native';
+import { View, StyleSheet, FlatList, Image, Alert, TouchableOpacity } from 'react-native';
 import { 
   Text, 
   Button, 
@@ -9,7 +9,8 @@ import {
   List,
   Chip,
   Badge,
-  ActivityIndicator
+  ActivityIndicator,
+  IconButton
 } from 'react-native-paper';
 import { colors, spacing, shadows, textStyles } from '../../theme';
 import { RouteProp } from '@react-navigation/native';
@@ -36,6 +37,7 @@ interface Props {
 export default function FamilyDetailScreen({ route, navigation }: Props) {
   const { familyId } = route.params;
   const [selectedTab, setSelectedTab] = useState<'ledger' | 'members'>('ledger');
+  const [selectedDate, setSelectedDate] = useState(new Date()); // 선택된 년월
   const [ledgerEntries, setLedgerEntries] = useState<any[]>([]);
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -50,6 +52,32 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
   const { isDarkMode } = useSettingsStore();
   const themeColors = isDarkMode ? darkColors : colors;
   const family = families.find(f => f.id === familyId);
+
+  // 이전 달로 이동
+  const goToPreviousMonth = () => {
+    const newDate = new Date(selectedDate);
+    newDate.setMonth(newDate.getMonth() - 1);
+    setSelectedDate(newDate);
+  };
+
+  // 다음 달로 이동
+  const goToNextMonth = () => {
+    const newDate = new Date(selectedDate);
+    newDate.setMonth(newDate.getMonth() + 1);
+    setSelectedDate(newDate);
+  };
+
+  // 현재 달로 돌아가기
+  const goToCurrentMonth = () => {
+    setSelectedDate(new Date());
+  };
+
+  // 선택된 날짜 문자열 생성
+  const getSelectedDateString = () => {
+    const year = selectedDate.getFullYear();
+    const month = selectedDate.getMonth() + 1;
+    return `${year}년 ${month}월`;
+  };
 
   // 카테고리 로드
   const loadCategories = async () => {
@@ -72,10 +100,24 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
       
       if (result.success && result.entries) {
         console.log('Ledger entries loaded:', result.entries.length);
-        setLedgerEntries(result.entries);
         
-        // 총 금액 계산
-        const total = result.entries.reduce((sum, entry) => sum + entry.amount, 0);
+        // 선택된 월의 데이터만 필터링
+        const year = selectedDate.getFullYear();
+        const month = selectedDate.getMonth() + 1;
+        const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
+        const lastDayOfMonth = new Date(year, month, 0).getDate();
+        const endDate = `${year}-${month.toString().padStart(2, '0')}-${lastDayOfMonth.toString().padStart(2, '0')}`;
+        
+        const filteredEntries = result.entries.filter(entry => {
+          const entryDate = entry.date || entry.created_at?.split('T')[0];
+          return entryDate >= startDate && entryDate <= endDate;
+        });
+        
+        console.log(`Filtered entries for ${getSelectedDateString()}:`, filteredEntries.length);
+        setLedgerEntries(filteredEntries);
+        
+        // 총 금액 계산 (필터링된 데이터 기준)
+        const total = filteredEntries.reduce((sum, entry) => sum + entry.amount, 0);
         setTotalAmount(total);
       } else {
         console.error('가계부 로딩 실패:', result.error);
@@ -233,6 +275,13 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
     }, [familyId])
   );
 
+  // 선택된 날짜가 변경될 때마다 가계부 데이터 다시 로드
+  useEffect(() => {
+    if (familyId) {
+      loadLedgerEntries();
+    }
+  }, [selectedDate, familyId]);
+
   const renderLedgerItem = ({ item }: any) => {
     const category = categories.find(cat => cat.id === item.category_id);
     const userName = item.users?.nickname || '사용자';
@@ -342,11 +391,34 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
             )}
           </View>
           {selectedTab === 'ledger' && (
-            <View style={styles.statsTextContainer}>
-              <Text style={[styles.totalAmountText, { color: themeColors.text.primary }]}>
-                이번 달 총 지출: {totalAmount.toLocaleString()}원
-              </Text>
-            </View>
+            <>
+              {/* 월별 네비게이션 */}
+              <View style={styles.dateNavigation}>
+                <IconButton
+                  icon="chevron-left"
+                  size={20}
+                  onPress={goToPreviousMonth}
+                  iconColor={themeColors.primary[500]}
+                />
+                <TouchableOpacity onPress={goToCurrentMonth} style={styles.dateDisplay}>
+                  <Text style={[styles.selectedDateText, { color: themeColors.text.primary }]}>
+                    {getSelectedDateString()}
+                  </Text>
+                </TouchableOpacity>
+                <IconButton
+                  icon="chevron-right"
+                  size={20}
+                  onPress={goToNextMonth}
+                  iconColor={themeColors.primary[500]}
+                />
+              </View>
+              
+              <View style={styles.statsTextContainer}>
+                <Text style={[styles.totalAmountText, { color: themeColors.text.primary }]}>
+                  총 지출: {totalAmount.toLocaleString()}원
+                </Text>
+              </View>
+            </>
           )}
         </Card.Content>
       </Card>
@@ -796,5 +868,21 @@ const styles = StyleSheet.create({
   },
   ledgerCategoryChip: {
     marginLeft: spacing[2],
+  },
+  dateNavigation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing[2],
+    marginBottom: spacing[2],
+  },
+  dateDisplay: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  selectedDateText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Dimensions } from 'react-native';
+import { View, StyleSheet, ScrollView, Dimensions, TouchableOpacity } from 'react-native';
 import { 
   Text, 
   Button, 
@@ -8,7 +8,8 @@ import {
   Paragraph,
   Chip,
   Divider,
-  ActivityIndicator
+  ActivityIndicator,
+  IconButton
 } from 'react-native-paper';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
@@ -56,6 +57,7 @@ export default function StatsScreen({ navigation, route }: Props) {
   const { isDarkMode } = useSettingsStore();
   const themeColors = isDarkMode ? darkColors : colors;
   const [selectedPeriod, setSelectedPeriod] = useState<'month' | 'quarter' | 'year'>('month');
+  const [selectedDate, setSelectedDate] = useState(new Date()); // 선택된 년월
   const [monthlyStats, setMonthlyStats] = useState<MonthlyStats[]>([]);
   const [categoryStats, setCategoryStats] = useState<CategoryStats[]>([]);
   const [memberStats, setMemberStats] = useState<MemberStats[]>([]);
@@ -65,12 +67,40 @@ export default function StatsScreen({ navigation, route }: Props) {
   const { families } = useFamilyStore();
   const family = families.find(f => f.id === familyId);
 
+  // 이전 달로 이동
+  const goToPreviousMonth = () => {
+    const newDate = new Date(selectedDate);
+    newDate.setMonth(newDate.getMonth() - 1);
+    setSelectedDate(newDate);
+  };
+
+  // 다음 달로 이동
+  const goToNextMonth = () => {
+    const newDate = new Date(selectedDate);
+    newDate.setMonth(newDate.getMonth() + 1);
+    setSelectedDate(newDate);
+  };
+
+  // 현재 달로 돌아가기
+  const goToCurrentMonth = () => {
+    setSelectedDate(new Date());
+  };
+
+  // 선택된 날짜 문자열 생성
+  const getSelectedDateString = () => {
+    const year = selectedDate.getFullYear();
+    const month = selectedDate.getMonth() + 1;
+    return `${year}년 ${month}월`;
+  };
+
   const loadStats = async () => {
     setLoading(true);
     try {
-      const now = new Date();
       const months = selectedPeriod === 'month' ? 1 : selectedPeriod === 'quarter' ? 3 : 12;
-      const startDate = new Date(now.getFullYear(), now.getMonth() - months + 1, 1);
+      
+      // selectedDate를 기준으로 시작 날짜 계산
+      const baseDate = selectedPeriod === 'month' ? selectedDate : new Date(); // 월별일 때만 선택된 날짜 사용
+      const startDate = new Date(baseDate.getFullYear(), baseDate.getMonth() - months + 1, 1);
       
       // 월별 통계 로드
       const monthlyData: MonthlyStats[] = [];
@@ -167,7 +197,7 @@ export default function StatsScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     loadStats();
-  }, [selectedPeriod, familyId]);
+  }, [selectedPeriod, selectedDate, familyId]);
 
   const screenWidth = Dimensions.get('window').width;
   
@@ -228,7 +258,6 @@ export default function StatsScreen({ navigation, route }: Props) {
       <Card style={[styles.headerCard, { backgroundColor: themeColors.surface.primary }]}>
         <Card.Content>
           <Title style={{ color: themeColors.text.primary }}>{family?.name || '가족방'} 통계</Title>
-          <Paragraph style={{ color: themeColors.text.secondary }}>가계부 지출 분석 및 통계입니다.</Paragraph>
         </Card.Content>
       </Card>
 
@@ -248,16 +277,77 @@ export default function StatsScreen({ navigation, route }: Props) {
         ))}
       </View>
 
+      {/* 월별 네비게이션 (월별 선택 시에만 표시) */}
+      {selectedPeriod === 'month' && (
+        <Card style={[styles.dateNavigationCard, { backgroundColor: themeColors.surface.primary }]}>
+          <Card.Content>
+            <View style={styles.dateNavigation}>
+              <IconButton
+                icon="chevron-left"
+                size={24}
+                onPress={goToPreviousMonth}
+                iconColor={themeColors.primary[500]}
+              />
+              <TouchableOpacity onPress={goToCurrentMonth} style={styles.dateDisplay}>
+                <Text style={[styles.selectedDateText, { color: themeColors.text.primary }]}>
+                  {getSelectedDateString()}
+                </Text>
+              </TouchableOpacity>
+              <IconButton
+                icon="chevron-right"
+                size={24}
+                onPress={goToNextMonth}
+                iconColor={themeColors.primary[500]}
+              />
+            </View>
+          </Card.Content>
+        </Card>
+      )}
+
       <Card style={[styles.summaryCard, { backgroundColor: themeColors.surface.primary }]}>
         <Card.Content>
-          <Title style={[styles.totalAmount, { color: themeColors.primary }]}>
+          <Title style={[styles.totalAmount, { color: themeColors.primary[500] }]}>
             총 지출: {totalExpenses.toLocaleString()}원
           </Title>
-          <Text style={[styles.periodText, { color: themeColors.text.secondary }]}>
-            ({periodLabels[selectedPeriod]} 기준)
-          </Text>
         </Card.Content>
       </Card>
+
+      {/* 멤버별 지출/수입 - 총 지출 다음에 표시 */}
+      {memberStats.length > 0 && (
+        <Card style={[styles.chartCard, { backgroundColor: themeColors.surface.primary }]}>
+          <Card.Content>
+            <Title style={[styles.chartTitle, { color: themeColors.text.primary }]}>멤버별 지출/수입</Title>
+            <View style={styles.memberStatsList}>
+              {memberStats.map((member, index) => (
+                <View key={member.user_id} style={[styles.memberStatItem, { backgroundColor: themeColors.surface.secondary }]}>
+                  <View style={styles.memberInfo}>
+                    <Text style={[styles.memberName, { color: themeColors.text.primary }]}>{member.nickname}</Text>
+                    <Text style={[styles.memberEntryCount, { color: themeColors.text.secondary }]}>
+                      {member.entry_count}건
+                    </Text>
+                  </View>
+                  <View style={styles.memberAmounts}>
+                    <View style={styles.amountRow}>
+                      <Text style={[styles.expenseLabel, { color: themeColors.text.secondary }]}>지출</Text>
+                      <Text style={[styles.amountValue, styles.expenseAmount]}>
+                        {member.total_expense.toLocaleString()}원
+                      </Text>
+                    </View>
+                    {member.total_income > 0 && (
+                      <View style={styles.amountRow}>
+                        <Text style={[styles.incomeLabel, { color: themeColors.text.secondary }]}>수입</Text>
+                        <Text style={[styles.amountValue, styles.incomeAmount]}>
+                          {member.total_income.toLocaleString()}원
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              ))}
+            </View>
+          </Card.Content>
+        </Card>
+      )}
 
       {monthlyStats.length > 0 && monthlyStats.some(stat => stat.total > 0) && (
         <>
@@ -339,41 +429,6 @@ export default function StatsScreen({ navigation, route }: Props) {
         </Card>
       )}
 
-      {memberStats.length > 0 && (
-        <Card style={styles.chartCard}>
-          <Card.Content>
-            <Title style={[styles.chartTitle, { color: themeColors.text.primary }]}>멤버별 지출/수입</Title>
-            <View style={styles.memberStatsList}>
-              {memberStats.map((member, index) => (
-                <View key={member.user_id} style={[styles.memberStatItem, { backgroundColor: themeColors.surface.secondary }]}>
-                  <View style={styles.memberInfo}>
-                    <Text style={[styles.memberName, { color: themeColors.text.primary }]}>{member.nickname}</Text>
-                    <Text style={[styles.memberEntryCount, { color: themeColors.text.secondary }]}>
-                      {member.entry_count}건
-                    </Text>
-                  </View>
-                  <View style={styles.memberAmounts}>
-                    <View style={styles.amountRow}>
-                      <Text style={[styles.expenseLabel, { color: themeColors.text.secondary }]}>지출</Text>
-                      <Text style={[styles.amountValue, styles.expenseAmount]}>
-                        {member.total_expense.toLocaleString()}원
-                      </Text>
-                    </View>
-                    {member.total_income > 0 && (
-                      <View style={styles.amountRow}>
-                        <Text style={[styles.incomeLabel, { color: themeColors.text.secondary }]}>수입</Text>
-                        <Text style={[styles.amountValue, styles.incomeAmount]}>
-                          {member.total_income.toLocaleString()}원
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                </View>
-              ))}
-            </View>
-          </Card.Content>
-        </Card>
-      )}
 
       {totalExpenses === 0 && (
         <Card style={[styles.emptyCard, { backgroundColor: themeColors.surface.primary }]}>
@@ -417,6 +472,30 @@ const styles = StyleSheet.create({
   },
   selectedChip: {
     backgroundColor: '#6200EE',
+  },
+  dateNavigationCard: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+  },
+  dateNavigation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  dateDisplay: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  selectedDateText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  currentMonthHint: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 2,
   },
   summaryCard: {
     marginHorizontal: 16,
