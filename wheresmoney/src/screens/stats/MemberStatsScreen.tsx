@@ -31,7 +31,7 @@ interface MonthlyMemberStats {
 
 export default function MemberStatsScreen({ navigation, route }: Props) {
   const { familyId, memberId, memberName } = route.params;
-  const { isDarkMode } = useSettingsStore();
+  const { isDarkMode, currency } = useSettingsStore();
   const themeColors = isDarkMode ? darkColors : colors;
   const [monthlyStats, setMonthlyStats] = useState<MonthlyMemberStats[]>([]);
   const [loading, setLoading] = useState(false);
@@ -194,11 +194,11 @@ export default function MemberStatsScreen({ navigation, route }: Props) {
                     </View>
                     <View style={styles.monthAmounts}>
                       <Text style={[styles.expenseAmount, { color: themeColors.error }]}>
-                        지출: {stat.total_expense.toLocaleString()}원
+                        지출: {currency.symbol}{stat.total_expense.toLocaleString()}
                       </Text>
                       {stat.total_income > 0 && (
                         <Text style={[styles.incomeAmount, { color: themeColors.success }]}>
-                          수입: {stat.total_income.toLocaleString()}원
+                          수입: {currency.symbol}{stat.total_income.toLocaleString()}
                         </Text>
                       )}
                     </View>

@@ -49,7 +49,7 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
   const [categories, setCategories] = useState<CategoryData[]>([]);
   
   const { families, setFamilies } = useFamilyStore();
-  const { isDarkMode } = useSettingsStore();
+  const { isDarkMode, currency } = useSettingsStore();
   const themeColors = isDarkMode ? darkColors : colors;
   const family = families.find(f => f.id === familyId);
 
@@ -313,7 +313,7 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
             {item.description}
           </Text>
           <Text style={[styles.ledgerAmountText, { color: amountColor }]}>
-            {Math.abs(item.amount).toLocaleString()}원
+            {currency.symbol}{Math.abs(item.amount).toLocaleString()}
           </Text>
         </View>
       </View>
@@ -415,7 +415,7 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
               
               <View style={styles.statsTextContainer}>
                 <Text style={[styles.totalAmountText, { color: themeColors.text.primary }]}>
-                  총 지출: {totalAmount.toLocaleString()}원
+                  총 지출: {currency.symbol}{totalAmount.toLocaleString()}
                 </Text>
               </View>
             </>

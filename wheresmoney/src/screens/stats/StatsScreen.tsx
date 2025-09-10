@@ -54,7 +54,7 @@ interface MemberStats {
 
 export default function StatsScreen({ navigation, route }: Props) {
   const { familyId } = route.params;
-  const { isDarkMode } = useSettingsStore();
+  const { isDarkMode, currency } = useSettingsStore();
   const themeColors = isDarkMode ? darkColors : colors;
   const [selectedPeriod, setSelectedPeriod] = useState<'month' | 'quarter' | 'year'>('month');
   const [selectedDate, setSelectedDate] = useState(new Date()); // 선택된 년월
@@ -336,7 +336,7 @@ export default function StatsScreen({ navigation, route }: Props) {
       <Card style={[styles.summaryCard, { backgroundColor: themeColors.surface.primary }]}>
         <Card.Content>
           <Title style={[styles.totalAmount, { color: themeColors.primary[500] }]}>
-            총 지출: {totalExpenses.toLocaleString()}원
+            총 지출: {currency.symbol}{totalExpenses.toLocaleString()}
           </Title>
         </Card.Content>
       </Card>
@@ -367,14 +367,14 @@ export default function StatsScreen({ navigation, route }: Props) {
                     <View style={styles.amountRow}>
                       <Text style={[styles.expenseLabel, { color: themeColors.text.secondary }]}>지출</Text>
                       <Text style={[styles.amountValue, styles.expenseAmount]}>
-                        {member.total_expense.toLocaleString()}원
+                        {currency.symbol}{member.total_expense.toLocaleString()}
                       </Text>
                     </View>
                     {member.total_income > 0 && (
                       <View style={styles.amountRow}>
                         <Text style={[styles.incomeLabel, { color: themeColors.text.secondary }]}>수입</Text>
                         <Text style={[styles.amountValue, styles.incomeAmount]}>
-                          {member.total_income.toLocaleString()}원
+                          {currency.symbol}{member.total_income.toLocaleString()}
                         </Text>
                       </View>
                     )}
@@ -416,7 +416,7 @@ export default function StatsScreen({ navigation, route }: Props) {
                   </View>
                   <View style={styles.categoryAmount}>
                     <Text style={[styles.amountText, { color: themeColors.text.primary }]}>
-                      {member.amount.toLocaleString()}원
+                      {currency.symbol}{member.amount.toLocaleString()}
                     </Text>
                     <Text style={[styles.percentText, { color: themeColors.text.secondary }]}>
                       ({member.population}%)
@@ -486,7 +486,7 @@ export default function StatsScreen({ navigation, route }: Props) {
                   </View>
                   <View style={styles.categoryAmount}>
                     <Text style={[styles.amountText, { color: themeColors.text.primary }]}>
-                      {category.amount.toLocaleString()}원
+                      {currency.symbol}{category.amount.toLocaleString()}
                     </Text>
                     <Text style={[styles.percentText, { color: themeColors.text.secondary }]}>
                       ({category.population}%)

@@ -15,6 +15,7 @@ import { HomeStackParamList } from '../../types';
 import { LedgerService } from '../../services/ledger';
 import { CategoryService, CategoryData } from '../../services/category';
 import { useAuthStore } from '../../stores/authStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 
 type LedgerDetailScreenRouteProp = RouteProp<HomeStackParamList, 'LedgerDetail'>;
 type LedgerDetailScreenNavigationProp = StackNavigationProp<HomeStackParamList, 'LedgerDetail'>;
@@ -31,6 +32,7 @@ export default function LedgerDetailScreen({ route, navigation }: Props) {
   const [deleting, setDeleting] = useState(false);
   const [categories, setCategories] = useState<CategoryData[]>([]);
   const { user } = useAuthStore();
+  const { currency } = useSettingsStore();
 
   useEffect(() => {
     loadCategories();
@@ -148,7 +150,7 @@ export default function LedgerDetailScreen({ route, navigation }: Props) {
         <Card.Content>
           <View style={styles.header}>
             <Title style={styles.amount}>
-              {entry.amount.toLocaleString()}원
+              {currency.symbol}{entry.amount.toLocaleString()}
             </Title>
             {category && (
               <Chip 

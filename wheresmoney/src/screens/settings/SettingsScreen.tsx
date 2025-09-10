@@ -191,7 +191,13 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   sectionTitle: {
-    ...textStyles.h3,
+    fontSize: 20,
+    fontWeight: '600',
+    minHeight: 24, // 텍스트 최소 높이 보장
+    lineHeight: 24, // 명시적 lineHeight 설정
+    textAlignVertical: 'center', // Android에서 수직 중앙 정렬
+    includeFontPadding: false, // Android에서 폰트 패딩 제거
+    paddingVertical: 3, // 수직 패딩 추가
     marginBottom: spacing[2],
     color: colors.text.primary,
   },

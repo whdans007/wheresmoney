@@ -39,7 +39,7 @@ export default function AddLedgerEntryScreen({ route, navigation }: Props) {
   const [error, setError] = useState('');
   const [categories, setCategories] = useState<CategoryData[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
-  const { isDarkMode } = useSettingsStore();
+  const { isDarkMode, currency } = useSettingsStore();
   const themeColors = isDarkMode ? darkColors : colors;
 
   // 카테고리 로드
@@ -197,7 +197,7 @@ export default function AddLedgerEntryScreen({ route, navigation }: Props) {
             onChangeText={setAmount}
             keyboardType="numeric"
             style={styles.input}
-            right={<TextInput.Affix text="원" />}
+            right={<TextInput.Affix text={currency.symbol} />}
           />
 
           <Text style={[styles.sectionTitle, { color: themeColors.text.primary }]}>카테고리</Text>
