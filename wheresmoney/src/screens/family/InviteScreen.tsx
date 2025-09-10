@@ -11,6 +11,7 @@ import {
 } from 'react-native-paper';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 // import QRCode from 'react-native-qrcode-svg'; // 임시 비활성화
 import { HomeStackParamList } from '../../types';
 import { FamilyMembersService } from '../../services/familyMembers';
@@ -29,6 +30,7 @@ interface Props {
 export default function InviteScreen({ navigation, route }: Props) {
   const { familyId } = route.params;
   const { isDarkMode } = useSettingsStore();
+  const { t } = useTranslation();
   const themeColors = isDarkMode ? darkColors : colors;
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [joinCode, setJoinCode] = useState<string>('');
@@ -61,7 +63,7 @@ export default function InviteScreen({ navigation, route }: Props) {
       if (inviteResult.error) {
         console.log('Error loading invite code:', inviteResult.error);
         setInviteCode(null);
-        Alert.alert('오류', `초대 코드 조회에 실패했습니다: ${inviteResult.error}`);
+        Alert.alert(t('common.error'), t('family.invite.errors.loadInviteCodeFailed', { error: inviteResult.error }));
         return;
       }
       
@@ -71,12 +73,12 @@ export default function InviteScreen({ navigation, route }: Props) {
       } else {
         console.log('No invite code returned');
         setInviteCode(null);
-        Alert.alert('오류', '초대 코드를 찾을 수 없습니다.');
+        Alert.alert(t('common.error'), t('family.invite.errors.noInviteCode'));
       }
     } catch (error) {
       console.error('Load family info error:', error);
       setInviteCode(null);
-      Alert.alert('오류', '가족방 정보 조회 중 오류가 발생했습니다.');
+      Alert.alert(t('common.error'), t('family.invite.errors.loadFamilyInfoFailed'));
     } finally {
       setIsLoading(false);
       setHasLoaded(true);
@@ -90,15 +92,15 @@ export default function InviteScreen({ navigation, route }: Props) {
       
       // 사용자에게 확인 받기
       Alert.alert(
-        '새 초대 코드 생성',
-        `${familyName} 가족방의 새로운 초대 코드를 생성하시겠습니까?\n\n⚠️ 기존 코드는 더 이상 사용할 수 없게 됩니다.`,
+        t('family.invite.newCodeGeneration.title'),
+        t('family.invite.newCodeGeneration.confirm', { familyName }),
         [
           {
-            text: '취소',
+            text: t('family.invite.newCodeGeneration.cancel'),
             style: 'cancel'
           },
           {
-            text: '생성',
+            text: t('family.invite.newCodeGeneration.generate'),
             style: 'destructive',
             onPress: async () => {
               try {
@@ -106,19 +108,19 @@ export default function InviteScreen({ navigation, route }: Props) {
                 
                 if (result.error) {
                   console.error('New invite code generation failed:', result.error);
-                  Alert.alert('오류', `새 초대 코드 생성에 실패했습니다: ${result.error}`);
+                  Alert.alert(t('common.error'), t('family.invite.newCodeGeneration.failed', { error: result.error }));
                 } else if (result.inviteCode) {
                   console.log('New invite code generated:', result.inviteCode);
                   setInviteCode(result.inviteCode);
                   Alert.alert(
-                    '성공',
-                    `새로운 초대 코드가 생성되었습니다!\n\n새 코드: ${result.inviteCode}`,
-                    [{ text: '확인' }]
+                    t('family.invite.newCodeGeneration.success'),
+                    t('family.invite.newCodeGeneration.successMessage', { code: result.inviteCode }),
+                    [{ text: t('common.confirm') }]
                   );
                 }
               } catch (error) {
                 console.error('Generate new code error:', error);
-                Alert.alert('오류', '새 초대 코드 생성 중 오류가 발생했습니다.');
+                Alert.alert(t('common.error'), t('family.invite.newCodeGeneration.error'));
               }
             }
           }
@@ -126,7 +128,7 @@ export default function InviteScreen({ navigation, route }: Props) {
       );
     } catch (error) {
       console.error('Generate new invite code error:', error);
-      Alert.alert('오류', '새 초대 코드 생성 중 오류가 발생했습니다.');
+      Alert.alert(t('common.error'), t('family.invite.newCodeGeneration.error'));
     } finally {
       setIsGeneratingNew(false);
     }
@@ -135,7 +137,7 @@ export default function InviteScreen({ navigation, route }: Props) {
   const copyInviteCode = () => {
     if (inviteCode) {
       Clipboard.setString(inviteCode);
-      Alert.alert('복사 완료', '초대 코드가 클립보드에 복사되었습니다.');
+      Alert.alert(t('family.invite.copy.success'), t('family.invite.copy.message'));
     }
   };
 
@@ -145,8 +147,8 @@ export default function InviteScreen({ navigation, route }: Props) {
     
     try {
       await Share.share({
-        message: `가족방에 초대합니다!\n\n초대 코드: ${inviteCode}\n\nWhere's My Money 앱에서 이 코드를 입력하여 가족방에 참여하세요.`,
-        title: '가족방 초대',
+        message: t('family.invite.share.message', { code: inviteCode }),
+        title: t('family.invite.share.title'),
       });
     } catch (error) {
       console.log('Share error:', error);
@@ -161,7 +163,7 @@ export default function InviteScreen({ navigation, route }: Props) {
     
     if (!joinCode.trim()) {
       console.log('Empty join code, showing alert');
-      Alert.alert('오류', '초대 코드를 입력해주세요.');
+      Alert.alert(t('common.error'), t('family.invite.join.enterCode'));
       return;
     }
 
@@ -182,27 +184,27 @@ export default function InviteScreen({ navigation, route }: Props) {
         console.log('Family name:', result.familyName);
         
         const errorMessage = result.familyName 
-          ? `${result.familyName} 가족방 참여에 실패했습니다: ${result.error}`
-          : `가족방 참여에 실패했습니다: ${result.error}`;
+          ? t('family.invite.join.failed', { familyName: result.familyName, error: result.error })
+          : t('family.invite.join.failedGeneric', { error: result.error });
         
         console.log('Showing error alert:', errorMessage);
-        Alert.alert('오류', errorMessage);
+        Alert.alert(t('common.error'), errorMessage);
       } else if (result.success) {
         console.log('=== Join successful ===');
         console.log('Family ID:', result.familyId);
         console.log('Family name:', result.familyName);
         
         const successMessage = result.familyName
-          ? `${result.familyName} 가족방에 성공적으로 참여했습니다!`
-          : '가족방에 성공적으로 참여했습니다!';
+          ? t('family.invite.join.successMessage', { familyName: result.familyName })
+          : t('family.invite.join.successMessageGeneric');
         
         console.log('Showing success alert:', successMessage);
         Alert.alert(
-          '성공', 
+          t('family.invite.join.success'), 
           successMessage,
           [
             {
-              text: '확인',
+              text: t('common.confirm'),
               onPress: () => {
                 console.log('Success alert confirmed, navigating back');
                 navigation.goBack();
@@ -213,13 +215,13 @@ export default function InviteScreen({ navigation, route }: Props) {
       } else {
         console.log('=== Unexpected result ===');
         console.log('Result has no error but success is not true');
-        Alert.alert('오류', '알 수 없는 오류가 발생했습니다.');
+        Alert.alert(t('common.error'), t('family.invite.join.unknownError'));
       }
     } catch (error) {
       console.error('=== Join family exception ===');
       console.error('Exception details:', error);
       console.error('Exception stack:', error.stack);
-      Alert.alert('오류', '가족방 참여 중 오류가 발생했습니다.');
+      Alert.alert(t('common.error'), t('family.invite.join.joinError'));
     } finally {
       console.log('=== Finally block ===');
       console.log('Setting isJoining to false');
@@ -233,7 +235,7 @@ export default function InviteScreen({ navigation, route }: Props) {
     
     if (!familyId) {
       console.error('No familyId provided');
-      Alert.alert('오류', '가족방 정보가 없습니다.');
+      Alert.alert(t('common.error'), t('family.invite.errors.noFamilyInfo'));
       setHasLoaded(true);
       return;
     }
@@ -245,37 +247,37 @@ export default function InviteScreen({ navigation, route }: Props) {
     <View style={[styles.container, { backgroundColor: themeColors.background.secondary }]}>
       <Appbar.Header>
         <Appbar.BackAction onPress={() => navigation.goBack()} />
-        <Appbar.Content title={familyName ? `${familyName} 초대` : "가족방 초대"} />
+        <Appbar.Content title={familyName ? t('family.invite.title', { familyName }) : t('family.invite.title')} />
       </Appbar.Header>
 
       <View style={styles.content}>
         <Card style={[styles.card, { backgroundColor: themeColors.surface.primary }]}>
           <Card.Content>
             <Text variant="titleMedium" style={[styles.sectionTitle, { color: themeColors.text.primary }]}>
-              {familyName ? `${familyName} 가족방 초대하기` : '가족방 초대하기'}
+              {t('family.invite.inviteToFamily')}
             </Text>
             <Paragraph style={[styles.description, { color: themeColors.text.secondary }]}>
               {familyName 
-                ? `${familyName} 가족방의 초대 코드를 공유하여 새 멤버를 초대하세요.`
-                : '초대 코드를 공유하여 가족을 초대하세요.'
-              } 이 코드는 가족방이 삭제될 때까지 유효합니다.
+                ? t('family.invite.familyDescription', { familyName })
+                : t('family.invite.description')
+              }
             </Paragraph>
 
             {!hasLoaded || isLoading ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" />
-                <Text style={[styles.loadingText, { color: themeColors.text.secondary }]}>초대 코드 불러오는 중...</Text>
+                <Text style={[styles.loadingText, { color: themeColors.text.secondary }]}>{t('family.invite.loading')}</Text>
               </View>
             ) : inviteCode !== null && inviteCode !== '' ? (
               <View style={styles.inviteContainer}>
                 <View style={styles.qrContainer}>
                   <Text style={[styles.qrPlaceholder, { color: themeColors.text.tertiary }]}>
-                    QR 코드 자리{'\n'}(임시로 비활성화됨)
+                    {t('family.invite.qrPlaceholder')}
                   </Text>
                 </View>
                 
                 <View style={styles.codeContainer}>
-                  <Text style={[styles.codeText, { backgroundColor: themeColors.surface.secondary, color: themeColors.primary }]}>초대 코드: {inviteCode}</Text>
+                  <Text style={[styles.codeText, { backgroundColor: themeColors.surface.secondary, color: themeColors.primary }]}>{t('family.invite.inviteCodeLabel', { code: inviteCode })}</Text>
                   <Button
                     mode="outlined"
                     onPress={copyInviteCode}
@@ -283,7 +285,7 @@ export default function InviteScreen({ navigation, route }: Props) {
                     compact
                     style={styles.copyButton}
                   >
-                    복사
+                    {t('common.copy')}
                   </Button>
                 </View>
                 
@@ -294,7 +296,7 @@ export default function InviteScreen({ navigation, route }: Props) {
                     style={styles.shareButton}
                     icon="share"
                   >
-                    초대 코드 공유
+                    {t('family.shareInviteCode')}
                   </Button>
                   <View style={styles.secondaryButtons}>
                     <Button
@@ -304,7 +306,7 @@ export default function InviteScreen({ navigation, route }: Props) {
                       style={styles.secondaryButton}
                       icon="refresh"
                     >
-                      새로고침
+                      {t('common.refresh')}
                     </Button>
                     <Button
                       mode="outlined"
@@ -313,7 +315,7 @@ export default function InviteScreen({ navigation, route }: Props) {
                       style={[styles.secondaryButton, styles.generateButton]}
                       icon="shuffle-variant"
                     >
-                      새 코드 생성
+                      {t('family.generateNewCode')}
                     </Button>
                   </View>
                 </View>
@@ -321,11 +323,10 @@ export default function InviteScreen({ navigation, route }: Props) {
             ) : (
               <View style={styles.errorContainer}>
                 <Text style={[styles.errorText, { color: themeColors.error.primary }]}>
-                  초대 코드를 불러올 수 없습니다.{'\n'}
-                  가족방 소유자만 초대 코드를 볼 수 있습니다.
+                  {t('family.invite.errors.cannotLoadInviteCode')}
                 </Text>
                 <Button mode="outlined" onPress={loadFamilyInfo}>
-                  다시 시도
+                  {t('common.retry')}
                 </Button>
               </View>
             )}
@@ -335,18 +336,18 @@ export default function InviteScreen({ navigation, route }: Props) {
         <Card style={[styles.card, { backgroundColor: themeColors.surface.primary }]}>
           <Card.Content>
             <Text variant="titleMedium" style={[styles.sectionTitle, { color: themeColors.text.primary }]}>
-              가족방 참여하기
+              {t('family.invite.joinFamily')}
             </Text>
             <Paragraph style={[styles.description, { color: themeColors.text.secondary }]}>
-              받은 초대 코드를 입력하여 가족방에 참여하세요.
+              {t('family.invite.joinDescription')}
             </Paragraph>
 
             <TextInput
-              label="초대 코드"
+              label={t('family.join.inviteCode')}
               value={joinCode}
               onChangeText={setJoinCode}
               mode="outlined"
-              placeholder="6자리 숫자를 입력하세요"
+              placeholder={t('family.invite.joinCodePlaceholder')}
               style={styles.input}
               keyboardType="numeric"
               maxLength={6}
@@ -366,7 +367,7 @@ export default function InviteScreen({ navigation, route }: Props) {
               disabled={isJoining || !joinCode.trim()}
               style={styles.joinButton}
             >
-              가족방 참여
+              {t('family.joinFamily')}
             </Button>
           </Card.Content>
         </Card>

@@ -2,6 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { MainTabParamList } from '../types';
 import { useSettingsStore } from '../stores/settingsStore';
 
@@ -12,6 +13,7 @@ import ProfileNavigator from './ProfileNavigator';
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 export default function MainNavigator() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const { isDarkMode } = useSettingsStore();
 
@@ -43,12 +45,12 @@ export default function MainNavigator() {
       <Tab.Screen 
         name="Home" 
         component={HomeNavigator}
-        options={{ tabBarLabel: '홈' }}
+        options={{ tabBarLabel: t('navigation.home') }}
       />
       <Tab.Screen 
         name="Profile" 
         component={ProfileNavigator}
-        options={{ tabBarLabel: '프로필' }}
+        options={{ tabBarLabel: t('navigation.profile') }}
       />
     </Tab.Navigator>
   );

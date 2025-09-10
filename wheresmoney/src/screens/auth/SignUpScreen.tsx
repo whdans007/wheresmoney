@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { 
   TextInput, 
   Button, 
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export default function SignUpScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -152,7 +154,7 @@ export default function SignUpScreen({ navigation }: Props) {
             }
             style={styles.button}
           >
-            회원가입
+            {t('auth.signUp')}
           </Button>
 
           <Button
@@ -160,7 +162,7 @@ export default function SignUpScreen({ navigation }: Props) {
             onPress={() => navigation.goBack()}
             style={styles.backButton}
           >
-            이미 계정이 있나요? 로그인
+            {t('auth.alreadyHaveAccount')}
           </Button>
         </Card.Content>
       </Card>

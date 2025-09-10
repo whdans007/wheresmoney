@@ -16,6 +16,7 @@ import { colors, spacing, shadows, textStyles } from '../../theme';
 import { RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useFocusEffect } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { HomeStackParamList } from '../../types';
 import { LedgerService } from '../../services/ledger';
 import { CategoryService, CategoryData } from '../../services/category';
@@ -35,6 +36,7 @@ interface Props {
 }
 
 export default function FamilyDetailScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const { familyId } = route.params;
   const [selectedTab, setSelectedTab] = useState<'ledger' | 'members'>('ledger');
   const [selectedDate, setSelectedDate] = useState(new Date()); // 선택된 년월
@@ -78,7 +80,7 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
   const getSelectedDateString = () => {
     const year = selectedDate.getFullYear();
     const month = selectedDate.getMonth() + 1;
-    return `${year}년 ${month}월`;
+    return `${year}${t('common.year')} ${month}${t('common.month')}`;
   };
 
   // 카테고리 로드
@@ -89,7 +91,7 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
         setCategories(result.categories);
       }
     } catch (error) {
-      console.error('카테고리 로딩 실패:', error);
+      console.error('Category loading failed:', error);
     }
   };
 
@@ -131,11 +133,11 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
         setTotalIncome(income);
         setTotalExpense(expense);
       } else {
-        console.error('가계부 로딩 실패:', result.error);
+        console.error('Ledger loading failed:', result.error);
         setLedgerEntries([]);
       }
     } catch (error) {
-      console.error('가계부 로딩 예외:', error);
+      console.error('Ledger loading exception:', error);
       setLedgerEntries([]);
     } finally {
       setLoading(false);
@@ -154,11 +156,11 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
         });
         setMembers(sortedMembers);
       } else {
-        console.error('가족 구성원 로딩 실패:', result.error);
+        console.error('Family members loading failed:', result.error);
         setMembers([]);
       }
     } catch (error) {
-      console.error('가족 구성원 로딩 예외:', error);
+      console.error('Family members loading exception:', error);
       setMembers([]);
     } finally {
       setMembersLoading(false);
@@ -175,33 +177,33 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
         setIsOwner(family?.owner_id === user.id || false);
       }
     } catch (error) {
-      console.error('사용자 정보 로딩 실패:', error);
+      console.error('User info loading failed:', error);
     }
   };
 
   // 가족방 탈퇴
   const leaveFamily = async () => {
     Alert.alert(
-      '가족방 탈퇴',
-      '정말로 이 가족방에서 탈퇴하시겠습니까?',
+      t('family.leaveFamily'),
+      t('family.leaveFamilyConfirm'),
       [
         {
-          text: '취소',
+          text: t('common.cancel'),
           style: 'cancel'
         },
         {
-          text: '탈퇴',
+          text: t('family.leave'),
           style: 'destructive',
           onPress: async () => {
             try {
               const result = await FamilyMembersService.leaveFamily(familyId);
               if (result.success) {
                 Alert.alert(
-                  '탈퇴 완료',
-                  '가족방에서 성공적으로 탈퇴했습니다.',
+                  t('family.leaveComplete'),
+                  t('family.leaveSuccess'),
                   [
                     {
-                      text: '확인',
+                      text: t('common.confirm'),
                       onPress: () => {
                         // 가족 목록 새로고침 후 홈으로 이동
                         const updatedFamilies = families.filter(f => f.id !== familyId);
@@ -212,10 +214,10 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
                   ]
                 );
               } else {
-                Alert.alert('탈퇴 실패', result.error || '탈퇴 중 오류가 발생했습니다.');
+                Alert.alert(t('family.leaveFailed'), result.error || t('family.leaveError'));
               }
             } catch (error) {
-              Alert.alert('오류', '가족방 탈퇴 중 오류가 발생했습니다.');
+              Alert.alert(t('common.error'), t('family.leaveError'));
             }
           }
         }
@@ -226,26 +228,26 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
   // 가족방 삭제 (방장만 가능)
   const deleteFamily = async () => {
     Alert.alert(
-      '가족방 삭제',
-      '정말로 이 가족방을 삭제하시겠습니까?\n\n⚠️ 이 작업은 되돌릴 수 없으며, 모든 가계부 기록도 함께 삭제됩니다.',
+      t('family.deleteFamily'),
+      t('family.deleteFamilyConfirm'),
       [
         {
-          text: '취소',
+          text: t('common.cancel'),
           style: 'cancel'
         },
         {
-          text: '삭제',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
               const result = await FamilyService.deleteFamily(familyId);
               if (result.success) {
                 Alert.alert(
-                  '삭제 완료',
-                  '가족방이 성공적으로 삭제되었습니다.',
+                  t('family.deleteComplete'),
+                  t('family.deleteSuccess'),
                   [
                     {
-                      text: '확인',
+                      text: t('common.confirm'),
                       onPress: async () => {
                         // 가족 목록 새로고침
                         try {
@@ -265,10 +267,10 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
                   ]
                 );
               } else {
-                Alert.alert('삭제 실패', result.error || '가족방 삭제 중 오류가 발생했습니다.');
+                Alert.alert(t('family.deleteFailed'), result.error || t('family.deleteError'));
               }
             } catch (error) {
-              Alert.alert('오류', '가족방 삭제 중 오류가 발생했습니다.');
+              Alert.alert(t('common.error'), t('family.deleteError'));
             }
           }
         }
@@ -295,7 +297,7 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
 
   const renderLedgerItem = ({ item }: any) => {
     const category = categories.find(cat => cat.id === item.category_id);
-    const userName = item.users?.nickname || '사용자';
+    const userName = item.users?.nickname || t('common.user');
     const displayDate = new Date(item.date || item.created_at).toLocaleDateString('ko-KR', {
       month: 'short',
       day: 'numeric'
@@ -303,7 +305,7 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
     
     // 지출/수입 구분 (현재는 모든 금액이 지출로 가정)
     const isExpense = item.amount > 0;
-    const typeText = isExpense ? '지출' : '수입';
+    const typeText = isExpense ? t('entry.expense') : t('entry.income');
     const amountColor = isExpense ? '#FF6B6B' : '#4ECDC4';
     
     return (
@@ -340,23 +342,23 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
     
     // 표시될 이름 결정
     const displayName = isCurrentUser 
-      ? '나' 
-      : (item.users?.nickname || '사용자');
+      ? t('common.me') 
+      : (item.users?.nickname || t('common.user'));
     
     return (
       <List.Item
         title={
           <View style={styles.titleContainer}>
-            <Text style={styles.memberName}>{item.users?.nickname || '사용자'}</Text>
+            <Text style={styles.memberName}>{item.users?.nickname || t('common.user')}</Text>
             {isCurrentUser && (
-              <Badge style={styles.currentUserBadge}>나</Badge>
+              <Badge style={styles.currentUserBadge}>{t('common.me')}</Badge>
             )}
             {item.role === 'owner' && (
-              <Badge style={styles.ownerBadgeNext}>방장</Badge>
+              <Badge style={styles.ownerBadgeNext}>{t('family.owner')}</Badge>
             )}
           </View>
         }
-        description={item.users?.email || '이메일 없음'}
+        description={item.users?.email || t('common.noEmail')}
         left={(props) => (
           item.users?.avatar_url ? (
             <Image source={{ uri: item.users.avatar_url }} style={styles.memberAvatar} />
@@ -367,7 +369,7 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
         right={() => (
           <View style={styles.memberRightContainer}>
             {isNewMember && (
-              <Badge style={styles.newMemberBadge}>새 멤버</Badge>
+              <Badge style={styles.newMemberBadge}>{t('family.newMember')}</Badge>
             )}
           </View>
         )}
@@ -385,7 +387,7 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
         <Card.Content>
           <View style={styles.headerRow}>
             <View style={styles.titleContainer}>
-              <Title style={{ color: themeColors.text.primary }}>{family?.name || '가족방'}</Title>
+              <Title style={{ color: themeColors.text.primary }}>{family?.name || t('navigation.familyLedger')}</Title>
               <Text style={{ color: themeColors.text.secondary }}>{family?.description || ''}</Text>
             </View>
             {selectedTab === 'ledger' && (
@@ -397,7 +399,7 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
                 compact
                 labelStyle={styles.headerStatsButtonLabel}
               >
-                통계
+                {t('common.statistics')}
               </Button>
             )}
           </View>
@@ -426,8 +428,8 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
               
               <View style={styles.statsTextContainer}>
                 <Text style={[styles.summaryText, { color: themeColors.text.secondary }]}>
-                  수입: <Text style={{ color: '#4CAF50' }}>{currency.symbol}{totalIncome.toLocaleString()}</Text>
-                  {'  '}지출: <Text style={{ color: '#FF6B6B' }}>{currency.symbol}{totalExpense.toLocaleString()}</Text>
+                  {t('entry.income')}: <Text style={{ color: '#4CAF50' }}>{currency.symbol}{totalIncome.toLocaleString()}</Text>
+                  {'  '}{t('entry.expense')}: <Text style={{ color: '#FF6B6B' }}>{currency.symbol}{totalExpense.toLocaleString()}</Text>
                 </Text>
               </View>
             </>
@@ -443,7 +445,7 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
           }}
           style={[styles.tabButton, selectedTab === 'ledger' && styles.activeTab]}
         >
-          가계부
+          {t('navigation.familyLedger')}
         </Button>
         <Button
           mode={selectedTab === 'members' ? 'contained' : 'outlined'}
@@ -452,7 +454,7 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
           }}
           style={[styles.tabButton, selectedTab === 'members' && styles.activeTab]}
         >
-          멤버
+          {t('family.members')}
         </Button>
       </View>
 
@@ -462,7 +464,7 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
             loading ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" />
-                <Text style={[styles.loadingText, { color: themeColors.text.secondary }]}>가계부 로딩 중...</Text>
+                <Text style={[styles.loadingText, { color: themeColors.text.secondary }]}>{t('common.loading')}...</Text>
               </View>
             ) : (
               <>
@@ -476,8 +478,7 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
                   style={styles.ledgerList}
                   ListEmptyComponent={
                     <Text style={[styles.emptyText, { color: themeColors.text.secondary }]}>
-                      아직 가계부 내역이 없습니다.{'\n'}
-                      첫 번째 내역을 추가해보세요!
+                      {t('family.noLedgerEntries')}
                     </Text>
                   }
                 />
@@ -487,13 +488,13 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
             membersLoading ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" />
-                <Text style={[styles.loadingText, { color: themeColors.text.secondary }]}>구성원 로딩 중...</Text>
+                <Text style={[styles.loadingText, { color: themeColors.text.secondary }]}>{t('common.loading')}...</Text>
               </View>
             ) : (
               <View style={styles.membersContainer}>
                 <View style={styles.memberHeader}>
                   <Text style={[styles.memberTitle, { color: themeColors.text.primary }]}>
-                    가족 구성원 ({members.length}명)
+                    {t('family.familyMembers')} ({members.length}{t('family.membersUnit')})
                   </Text>
                   {isOwner ? (
                     <View style={styles.ownerButtonsContainer}>
@@ -508,7 +509,7 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
                         contentStyle={{ height: 36 }}
                         labelStyle={{ fontSize: 14, fontWeight: '600' }}
                       >
-                        초대
+                        {t('family.invite')}
                       </Button>
                       <Button
                         mode="contained"
@@ -521,7 +522,7 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
                         contentStyle={{ height: 36 }}
                         labelStyle={{ fontSize: 14, fontWeight: '600' }}
                       >
-                        삭제
+                        {t('common.delete')}
                       </Button>
                     </View>
                   ) : (
@@ -536,7 +537,7 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
                       contentStyle={{ height: 36 }}
                       labelStyle={{ fontSize: 14, fontWeight: '600' }}
                     >
-                      탈퇴
+                      {t('family.leave')}
                     </Button>
                   )}
                 </View>
@@ -550,7 +551,7 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
                   showsVerticalScrollIndicator={false}
                   ListEmptyComponent={
                     <Text style={[styles.emptyText, { color: themeColors.text.secondary }]}>
-                      가족 구성원이 없습니다.
+                      {t('family.noMembers')}
                     </Text>
                   }
                 />

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { 
   TextInput, 
   Button, 
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export default function LoginScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -37,9 +39,9 @@ export default function LoginScreen({ navigation }: Props) {
           '재발송 실패',
           '일반 재발송이 실패했습니다. 강제 재발송을 시도하시겠습니까?',
           [
-            { text: '취소', style: 'cancel' },
+            { text: t('common.cancel'), style: 'cancel' },
             { 
-              text: '강제 재발송', 
+              text: t('auth.resend.forceResend'), 
               onPress: async () => {
                 const forceResult = await AuthService.forceResendEmail(userEmail);
                 if (forceResult.error) {
@@ -75,11 +77,11 @@ export default function LoginScreen({ navigation }: Props) {
           result.message || '이메일 인증이 필요합니다.',
           [
             {
-              text: '이메일 재발송',
+              text: t('auth.resend.resendEmail'),
               onPress: () => handleResendConfirmation(result.unconfirmedEmail || email),
             },
             {
-              text: '확인',
+              text: t('common.confirm'),
               style: 'default',
             },
           ]
@@ -160,7 +162,7 @@ export default function LoginScreen({ navigation }: Props) {
             disabled={!email || !password || !isValidEmail(email)}
             style={styles.button}
           >
-            로그인
+            {t('auth.login')}
           </Button>
 
           <View style={styles.linkContainer}>
@@ -168,13 +170,13 @@ export default function LoginScreen({ navigation }: Props) {
               mode="text"
               onPress={() => navigation.navigate('SignUp')}
             >
-              회원가입
+              {t('auth.signUp')}
             </Button>
             <Button
               mode="text"
               onPress={() => navigation.navigate('ForgotPassword')}
             >
-              비밀번호 찾기
+              {t('auth.forgotPassword')}
             </Button>
           </View>
         </Card.Content>

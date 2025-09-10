@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Image, Alert } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import {
   TextInput,
   Button,
@@ -16,6 +17,7 @@ import { supabase } from '../../services/supabase';
 import { colors, darkColors } from '../../theme';
 
 export default function EditProfileScreen({ navigation }: any) {
+  const { t } = useTranslation();
   const { user, setUser } = useAuthStore();
   const { isDarkMode } = useSettingsStore();
   const themeColors = isDarkMode ? darkColors : colors;
@@ -37,17 +39,17 @@ export default function EditProfileScreen({ navigation }: any) {
     const newErrors: { [key: string]: string } = {};
 
     if (!nickname.trim()) {
-      newErrors.nickname = '닉네임을 입력해주세요.';
+      newErrors.nickname = t('profile.validation.nicknameRequired');
     } else if (nickname.trim().length < 2) {
-      newErrors.nickname = '닉네임은 2자 이상이어야 합니다.';
+      newErrors.nickname = t('profile.validation.nicknameMinLength');
     }
 
     if (newPassword) {
       if (newPassword.length < 6) {
-        newErrors.newPassword = '새 비밀번호는 6자 이상이어야 합니다.';
+        newErrors.newPassword = t('profile.validation.passwordMinLength');
       }
       if (newPassword !== confirmPassword) {
-        newErrors.confirmPassword = '비밀번호 확인이 일치하지 않습니다.';
+        newErrors.confirmPassword = t('profile.validation.passwordMismatch');
       }
     }
 
@@ -72,7 +74,7 @@ export default function EditProfileScreen({ navigation }: any) {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     
     if (permission.granted === false) {
-      Alert.alert('권한 필요', '카메라 접근 권한이 필요합니다.');
+      Alert.alert(t('profile.errors.cameraPermissionNeeded'), t('profile.errors.cameraPermissionMessage'));
       return;
     }
 
@@ -89,12 +91,12 @@ export default function EditProfileScreen({ navigation }: any) {
 
   const showImagePicker = () => {
     Alert.alert(
-      '프로필 사진',
-      '프로필 사진을 어떻게 변경하시겠습니까?',
+      t('profile.profilePhoto'),
+      t('profile.profilePhotoChangeMessage'),
       [
-        { text: '카메라', onPress: takePhoto },
-        { text: '갤러리', onPress: pickImage },
-        { text: '취소', style: 'cancel' },
+        { text: t('image.camera'), onPress: takePhoto },
+        { text: t('image.gallery'), onPress: pickImage },
+        { text: t('common.cancel'), style: 'cancel' },
       ]
     );
   };
@@ -150,7 +152,7 @@ export default function EditProfileScreen({ navigation }: any) {
         console.log('아바타 업로드 중...');
         avatarUrl = await uploadAvatar(avatar);
         if (!avatarUrl) {
-          Alert.alert('오류', '프로필 사진 업로드에 실패했습니다.');
+          Alert.alert(t('common.error'), t('profile.errors.avatarUploadFailed'));
           return;
         }
       }
@@ -167,7 +169,7 @@ export default function EditProfileScreen({ navigation }: any) {
 
       if (profileError) {
         console.error('프로필 업데이트 오류:', profileError);
-        Alert.alert('오류', '프로필 업데이트에 실패했습니다.');
+        Alert.alert(t('common.error'), t('profile.errors.profileUpdateFailed'));
         return;
       }
 
@@ -180,7 +182,7 @@ export default function EditProfileScreen({ navigation }: any) {
 
         if (passwordError) {
           console.error('비밀번호 변경 오류:', passwordError);
-          Alert.alert('오류', '비밀번호 변경에 실패했습니다.');
+          Alert.alert(t('common.error'), t('profile.errors.passwordChangeFailed'));
           return;
         }
       }
@@ -193,13 +195,13 @@ export default function EditProfileScreen({ navigation }: any) {
       };
       setUser(updatedUser);
 
-      Alert.alert('성공', '프로필이 업데이트되었습니다.', [
-        { text: '확인', onPress: () => navigation.goBack() }
+      Alert.alert(t('common.success'), t('profile.success.profileUpdated'), [
+        { text: t('common.confirm'), onPress: () => navigation.goBack() }
       ]);
 
     } catch (error: any) {
       console.error('프로필 저장 예외:', error);
-      Alert.alert('오류', '프로필 저장 중 오류가 발생했습니다.');
+      Alert.alert(t('common.error'), t('profile.errors.profileSaveFailed'));
     } finally {
       setLoading(false);
     }
@@ -209,7 +211,7 @@ export default function EditProfileScreen({ navigation }: any) {
     <ScrollView style={[styles.container, { backgroundColor: themeColors.background.secondary }]}>
       <Card style={[styles.card, { backgroundColor: themeColors.surface.primary }]}>
         <Card.Content>
-          <Title style={[styles.title, { color: themeColors.text.primary }]}>프로필 편집</Title>
+          <Title style={[styles.title, { color: themeColors.text.primary }]}>{t('navigation.editProfile')}</Title>
 
           {/* 아바타 이미지 */}
           <View style={styles.avatarContainer}>
@@ -224,13 +226,13 @@ export default function EditProfileScreen({ navigation }: any) {
               style={styles.avatarButton}
               compact
             >
-              사진 변경
+              {t('image.changePhoto')}
             </Button>
           </View>
 
           {/* 이메일 (읽기 전용) */}
           <TextInput
-            label="이메일"
+            label={t('profile.email')}
             value={user?.email || ''}
             style={styles.input}
             editable={false}
@@ -239,7 +241,7 @@ export default function EditProfileScreen({ navigation }: any) {
 
           {/* 닉네임 */}
           <TextInput
-            label="닉네임"
+            label={t('profile.nickname')}
             value={nickname}
             onChangeText={setNickname}
             style={styles.input}
@@ -252,10 +254,10 @@ export default function EditProfileScreen({ navigation }: any) {
           )}
 
           {/* 비밀번호 변경 섹션 */}
-          <Title style={[styles.sectionTitle, { color: themeColors.text.primary }]}>비밀번호 변경 (선택사항)</Title>
+          <Title style={[styles.sectionTitle, { color: themeColors.text.primary }]}>{t('profile.changePassword')}</Title>
 
           <TextInput
-            label="새 비밀번호"
+            label={t('profile.newPassword')}
             value={newPassword}
             onChangeText={setNewPassword}
             secureTextEntry
@@ -269,7 +271,7 @@ export default function EditProfileScreen({ navigation }: any) {
           )}
 
           <TextInput
-            label="새 비밀번호 확인"
+            label={t('profile.confirmNewPassword')}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry
@@ -290,7 +292,7 @@ export default function EditProfileScreen({ navigation }: any) {
             disabled={loading}
             style={styles.saveButton}
           >
-            {loading ? '저장 중...' : '저장'}
+            {loading ? t('common.saving') : t('common.save')}
           </Button>
         </Card.Content>
       </Card>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, Alert, Linking } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { 
   Text, 
   Card,
@@ -24,6 +25,7 @@ interface Props {
 }
 
 export default function SettingsScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { 
     isDarkMode, 
     currency, 
@@ -37,21 +39,21 @@ export default function SettingsScreen({ navigation }: Props) {
   const [showLanguageDialog, setShowLanguageDialog] = useState(false);
 
   const languages = [
-    { code: 'ko' as Language, name: '한국어', nativeName: '한국어' },
-    { code: 'en' as Language, name: 'English', nativeName: 'English' },
+    { code: 'ko' as Language, name: t('language.korean'), nativeName: t('language.korean') },
+    { code: 'en' as Language, name: t('language.english'), nativeName: t('language.english') },
   ];
 
   const handleCurrencySelect = (selectedCurrency: Currency) => {
     setCurrency(selectedCurrency);
     setShowCurrencyDialog(false);
-    Alert.alert('설정 완료', `화폐 단위가 ${selectedCurrency.name}(으)로 변경되었습니다.`);
+    Alert.alert(t('common.settingsComplete'), t('settings.currencyChanged', { currency: t(`currency.${selectedCurrency.code.toLowerCase()}`) }));
   };
 
   const handleLanguageSelect = (selectedLanguage: Language) => {
     setLanguage(selectedLanguage);
     setShowLanguageDialog(false);
     const languageName = languages.find(l => l.code === selectedLanguage)?.name;
-    Alert.alert('설정 완료', `언어가 ${languageName}(으)로 변경되었습니다.`);
+    Alert.alert(t('common.settingsComplete'), t('settings.languageChanged', { language: languageName }));
   };
 
   const currentLanguage = languages.find(l => l.code === language);
@@ -65,12 +67,12 @@ export default function SettingsScreen({ navigation }: Props) {
     <ScrollView style={[styles.container, { backgroundColor: themeColors.background.secondary }]}>
       <Card style={[styles.card, { backgroundColor: themeColors.surface.primary }]}>
         <Card.Content>
-          <Title style={[styles.sectionTitle, { color: themeColors.text.primary }]}>앱 설정</Title>
+          <Title style={[styles.sectionTitle, { color: themeColors.text.primary }]}>{t('settings.appSettings')}</Title>
           
           <List.Section>
             <List.Item
-              title="다크 모드"
-              description={isDarkMode ? "어두운 테마 사용 중" : "밝은 테마 사용 중"}
+              title={t('settings.darkMode')}
+              description={isDarkMode ? t('settings.darkThemeActive') : t('settings.lightThemeActive')}
               left={(props) => <List.Icon {...props} icon="theme-light-dark" />}
               right={() => (
                 <Switch
@@ -83,8 +85,8 @@ export default function SettingsScreen({ navigation }: Props) {
             <Divider />
             
             <List.Item
-              title="화폐 단위"
-              description={`${currency.name} (${currency.symbol})`}
+              title={t('settings.currency')}
+              description={`${t(`currency.${currency.code.toLowerCase()}`)} (${currency.symbol})`}
               left={(props) => <List.Icon {...props} icon="currency-usd" />}
               right={(props) => <List.Icon {...props} icon="chevron-right" />}
               onPress={() => setShowCurrencyDialog(true)}
@@ -93,8 +95,8 @@ export default function SettingsScreen({ navigation }: Props) {
             <Divider />
             
             <List.Item
-              title="언어"
-              description={currentLanguage?.nativeName || '한국어'}
+              title={t('settings.language')}
+              description={currentLanguage?.nativeName || t('language.korean')}
               left={(props) => <List.Icon {...props} icon="translate" />}
               right={(props) => <List.Icon {...props} icon="chevron-right" />}
               onPress={() => setShowLanguageDialog(true)}
@@ -105,11 +107,11 @@ export default function SettingsScreen({ navigation }: Props) {
 
       <Card style={[styles.card, { backgroundColor: themeColors.surface.primary }]}>
         <Card.Content>
-          <Title style={[styles.sectionTitle, { color: themeColors.text.primary }]}>정보</Title>
+          <Title style={[styles.sectionTitle, { color: themeColors.text.primary }]}>{t('settings.information')}</Title>
           
           <List.Section>
             <List.Item
-              title="앱 버전"
+              title={t('settings.appVersion')}
               description="1.0.0"
               left={(props) => <List.Icon {...props} icon="information" />}
             />
@@ -117,7 +119,7 @@ export default function SettingsScreen({ navigation }: Props) {
             <Divider />
             
             <List.Item
-              title="개발자 정보"
+              title={t('settings.developerInfo')}
               description="필사랑 (philsarang) - whdans0077@gmail.com"
               left={(props) => <List.Icon {...props} icon="code-tags" />}
               right={(props) => <List.Icon {...props} icon="email" />}
@@ -127,10 +129,10 @@ export default function SettingsScreen({ navigation }: Props) {
         </Card.Content>
       </Card>
 
-      {/* 화폐 단위 선택 다이얼로그 */}
+      {/* Currency Selection Dialog */}
       <Portal>
         <Dialog visible={showCurrencyDialog} onDismiss={() => setShowCurrencyDialog(false)}>
-          <Dialog.Title>화폐 단위 선택</Dialog.Title>
+          <Dialog.Title>{t('settings.selectCurrency')}</Dialog.Title>
           <Dialog.Content>
             <RadioButton.Group
               onValueChange={(value) => {
@@ -144,22 +146,22 @@ export default function SettingsScreen({ navigation }: Props) {
               {CURRENCIES.map((curr) => (
                 <RadioButton.Item
                   key={curr.code}
-                  label={`${curr.name} (${curr.symbol})`}
+                  label={`${t(`currency.${curr.code.toLowerCase()}`)} (${curr.symbol})`}
                   value={curr.code}
                 />
               ))}
             </RadioButton.Group>
           </Dialog.Content>
           <Dialog.Actions>
-            <Button onPress={() => setShowCurrencyDialog(false)}>취소</Button>
+            <Button onPress={() => setShowCurrencyDialog(false)}>{t('common.cancel')}</Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>
 
-      {/* 언어 선택 다이얼로그 */}
+      {/* Language Selection Dialog */}
       <Portal>
         <Dialog visible={showLanguageDialog} onDismiss={() => setShowLanguageDialog(false)}>
-          <Dialog.Title>언어 선택</Dialog.Title>
+          <Dialog.Title>{t('settings.selectLanguage')}</Dialog.Title>
           <Dialog.Content>
             <RadioButton.Group
               onValueChange={(value) => {
@@ -177,7 +179,7 @@ export default function SettingsScreen({ navigation }: Props) {
             </RadioButton.Group>
           </Dialog.Content>
           <Dialog.Actions>
-            <Button onPress={() => setShowLanguageDialog(false)}>취소</Button>
+            <Button onPress={() => setShowLanguageDialog(false)}>{t('common.cancel')}</Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>

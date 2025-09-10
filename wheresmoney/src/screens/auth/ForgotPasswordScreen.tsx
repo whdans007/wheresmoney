@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { 
   TextInput, 
   Button, 
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export default function ForgotPasswordScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -65,7 +67,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
               onPress={() => navigation.goBack()}
               style={styles.button}
             >
-              로그인으로 돌아가기
+              {t('auth.backToLogin')}
             </Button>
           </Card.Content>
         </Card>
@@ -109,7 +111,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
             disabled={!email || !isValidEmail(email)}
             style={styles.button}
           >
-            재설정 링크 보내기
+            {t('auth.sendResetLink')}
           </Button>
 
           <Button
@@ -117,7 +119,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
             onPress={() => navigation.goBack()}
             style={styles.backButton}
           >
-            로그인으로 돌아가기
+            {t('auth.backToLogin')}
           </Button>
         </Card.Content>
       </Card>

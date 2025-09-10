@@ -8,6 +8,7 @@ import {
   Title
 } from 'react-native-paper';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { useTranslation } from 'react-i18next';
 import { HomeStackParamList } from '../../types';
 import { FamilyService } from '../../services/family';
 import { useFamilyStore } from '../../stores/familyStore';
@@ -21,6 +22,7 @@ interface Props {
 }
 
 export default function CreateFamilyScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
@@ -92,7 +94,7 @@ export default function CreateFamilyScreen({ navigation }: Props) {
             disabled={!name.trim()}
             style={styles.button}
           >
-            가족방 만들기
+            {t('family.createFamily')}
           </Button>
         </Card.Content>
       </Card>

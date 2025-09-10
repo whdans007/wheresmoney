@@ -1,6 +1,7 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { useTheme } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../stores/settingsStore';
 import { ProfileStackParamList } from '../types';
 
@@ -14,6 +15,7 @@ import HelpScreen from '../screens/profile/HelpScreen';
 const Stack = createStackNavigator<ProfileStackParamList>();
 
 export default function ProfileNavigator() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const { isDarkMode } = useSettingsStore();
 
@@ -33,32 +35,32 @@ export default function ProfileNavigator() {
       <Stack.Screen 
         name="ProfileScreen" 
         component={ProfileScreen}
-        options={{ title: '프로필' }}
+        options={{ title: t('navigation.profile') }}
       />
       <Stack.Screen 
         name="EditProfile" 
         component={EditProfileScreen}
-        options={{ title: '프로필 편집' }}
+        options={{ title: t('navigation.editProfile') }}
       />
       <Stack.Screen 
         name="Settings" 
         component={SettingsScreen}
-        options={{ title: '설정' }}
+        options={{ title: t('navigation.settings') }}
       />
       <Stack.Screen 
         name="DeleteAccount" 
         component={DeleteAccountScreen}
-        options={{ title: '회원 탈퇴' }}
+        options={{ title: t('navigation.deleteAccount') }}
       />
       <Stack.Screen 
         name="Notification" 
         component={NotificationScreen}
-        options={{ title: '알림 설정' }}
+        options={{ title: t('navigation.notification') }}
       />
       <Stack.Screen 
         name="Help" 
         component={HelpScreen}
-        options={{ title: '도움말' }}
+        options={{ title: t('navigation.help') }}
       />
     </Stack.Navigator>
   );

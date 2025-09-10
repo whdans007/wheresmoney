@@ -17,6 +17,7 @@ import { CategoryService, CategoryData } from '../../services/category';
 import { DEFAULT_CATEGORIES, INCOME_CATEGORIES } from '../../constants/categories';
 import { useAuthStore } from '../../stores/authStore';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { useTranslation } from 'react-i18next';
 
 type LedgerDetailScreenRouteProp = RouteProp<HomeStackParamList, 'LedgerDetail'>;
 type LedgerDetailScreenNavigationProp = StackNavigationProp<HomeStackParamList, 'LedgerDetail'>;
@@ -34,6 +35,7 @@ export default function LedgerDetailScreen({ route, navigation }: Props) {
   const [categories, setCategories] = useState<CategoryData[]>([]);
   const { user } = useAuthStore();
   const { currency } = useSettingsStore();
+  const { t } = useTranslation();
 
   useEffect(() => {
     loadCategories();
@@ -134,7 +136,7 @@ export default function LedgerDetailScreen({ route, navigation }: Props) {
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>가계부를 찾을 수 없습니다.</Text>
         <Button mode="contained" onPress={() => navigation.goBack()}>
-          돌아가기
+          {t('common.back')}
         </Button>
       </View>
     );

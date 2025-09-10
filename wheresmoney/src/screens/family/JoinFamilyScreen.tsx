@@ -9,6 +9,7 @@ import {
   Paragraph
 } from 'react-native-paper';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { useTranslation } from 'react-i18next';
 import { HomeStackParamList } from '../../types';
 import { FamilyMembersService } from '../../services/familyMembers';
 import { FamilyService } from '../../services/family';
@@ -23,6 +24,7 @@ interface Props {
 }
 
 export default function JoinFamilyScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [joinCode, setJoinCode] = useState<string>('');
   const [isJoining, setIsJoining] = useState(false);
   const { setFamilies } = useFamilyStore();
@@ -31,12 +33,12 @@ export default function JoinFamilyScreen({ navigation }: Props) {
 
   const joinFamily = async () => {
     if (!joinCode.trim()) {
-      Alert.alert('오류', '초대 코드를 입력해주세요.');
+      Alert.alert(t('common.error'), t('family.join.errors.enterInviteCode'));
       return;
     }
 
     if (joinCode.trim().length !== 6) {
-      Alert.alert('오류', '초대 코드는 6자리 숫자여야 합니다.');
+      Alert.alert(t('common.error'), t('family.join.errors.inviteCodeFormat'));
       return;
     }
 
@@ -48,10 +50,10 @@ export default function JoinFamilyScreen({ navigation }: Props) {
       
       if (!result.success || result.error) {
         console.error('Join family error:', result.error);
-        Alert.alert('참여 실패', result.error || '가족방 참여에 실패했습니다.');
+        Alert.alert(t('family.join.errors.joinFailed'), result.error || t('family.join.errors.joinFailedMessage'));
       } else if (!result.familyId) {
         console.error('Join successful but no familyId provided');
-        Alert.alert('오류', '가족방 정보를 불러올 수 없습니다.');
+        Alert.alert(t('common.error'), t('family.join.errors.cannotLoadFamily'));
       } else {
         // 가족 목록을 다시 로드하여 store 업데이트
         try {
@@ -60,15 +62,15 @@ export default function JoinFamilyScreen({ navigation }: Props) {
             setFamilies(familiesResult.families);
           }
         } catch (error) {
-          console.error('가족 목록 업데이트 실패:', error);
+          console.error('Family list update failed:', error);
         }
 
         Alert.alert(
-          '참여 완료! 🎉', 
-          '가족방에 성공적으로 참여했습니다!\n가족 구성원을 확인해보세요.',
+          t('family.join.success.joinComplete'), 
+          t('family.join.success.joinSuccessMessage'),
           [
             {
-              text: '확인',
+              text: t('common.confirm'),
               onPress: () => navigation.navigate('FamilyDetail', { familyId: result.familyId })
             }
           ]
@@ -76,7 +78,7 @@ export default function JoinFamilyScreen({ navigation }: Props) {
       }
     } catch (error) {
       console.log('Join family error:', error);
-      Alert.alert('오류', '가족방 참여 중 오류가 발생했습니다.');
+      Alert.alert(t('common.error'), t('family.join.errors.errorDuringJoin'));
     } finally {
       setIsJoining(false);
     }
@@ -92,7 +94,7 @@ export default function JoinFamilyScreen({ navigation }: Props) {
     <View style={[styles.container, { backgroundColor: themeColors.background.secondary }]}>
       <Appbar.Header style={[styles.header, { backgroundColor: themeColors.surface.primary }]}>
         <Appbar.BackAction onPress={() => navigation.goBack()} />
-        <Appbar.Content title="가족방 참여" />
+        <Appbar.Content title={t('family.join.title')} />
       </Appbar.Header>
 
       <View style={styles.content}>
@@ -102,17 +104,16 @@ export default function JoinFamilyScreen({ navigation }: Props) {
               <Text style={styles.icon}>👨‍👩‍👧‍👦</Text>
             </View>
             
-            <Text variant="headlineSmall" style={[styles.title, { color: themeColors.text.primary }]}>
-              가족방 참여하기
+            <Text style={[styles.title, { color: themeColors.text.primary }]}>
+              {t('family.join.heading')}
             </Text>
             
-            <Paragraph style={[styles.description, { color: themeColors.text.secondary }]}>
-              가족이 공유해준 6자리 초대 코드를 입력하여{'\n'}
-              가족방에 참여하세요.
-            </Paragraph>
+            <Text style={[styles.description, { color: themeColors.text.secondary }]}>
+              {t('family.join.instructions')}
+            </Text>
 
             <TextInput
-              label="초대 코드"
+              label={t('family.join.inviteCode')}
               value={joinCode}
               onChangeText={handleCodeChange}
               mode="outlined"
@@ -134,12 +135,12 @@ export default function JoinFamilyScreen({ navigation }: Props) {
               contentStyle={styles.joinButtonContent}
               buttonColor={themeColors.primary[500]}
             >
-              {isJoining ? '참여 중...' : '가족방 참여하기'}
+              {isJoining ? t('family.join.joining') : t('family.join.joinButton')}
             </Button>
 
             <View style={[styles.helpContainer, { backgroundColor: themeColors.background.tertiary }]}>
               <Text style={[styles.helpText, { color: themeColors.text.secondary }]}>
-                💡 초대 코드는 가족방 소유자가 생성할 수 있습니다
+                {t('family.join.helpText')}
               </Text>
             </View>
           </Card.Content>
@@ -159,7 +160,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: spacing[4],
-    justifyContent: 'center',
+    paddingTop: spacing[8], // Position content higher on screen
   },
   card: {
     borderRadius: 24,
@@ -173,15 +174,21 @@ const styles = StyleSheet.create({
     fontSize: 64,
   },
   title: {
-    ...textStyles.h2,
+    fontSize: 24,
+    fontWeight: 'bold',
+    lineHeight: 32,
     textAlign: 'center',
     marginBottom: spacing[3],
+    minHeight: 32,
+    includeFontPadding: false,
   },
   description: {
-    ...textStyles.body1,
+    fontSize: 16,
     textAlign: 'center',
     marginBottom: spacing[6],
     lineHeight: 24,
+    paddingHorizontal: spacing[2],
+    minHeight: 48,
   },
   input: {
     marginBottom: spacing[5],
@@ -203,9 +210,12 @@ const styles = StyleSheet.create({
     padding: spacing[3],
     borderRadius: spacing[3],
     alignItems: 'center',
+    minHeight: 40,
   },
   helpText: {
-    ...textStyles.caption,
+    fontSize: 14,
+    lineHeight: 20,
     textAlign: 'center',
+    includeFontPadding: false,
   },
 });

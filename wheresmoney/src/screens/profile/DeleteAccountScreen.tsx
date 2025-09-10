@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { 
   Text, 
   Button, 
@@ -24,6 +25,7 @@ interface Props {
 }
 
 export default function DeleteAccountScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { user, signOut } = useAuthStore();
   const { isDarkMode } = useSettingsStore();
   const themeColors = isDarkMode ? darkColors : colors;
@@ -68,8 +70,8 @@ export default function DeleteAccountScreen({ navigation }: Props) {
       '최종 확인',
       '정말로 계정을 탈퇴하시겠습니까?\n\n개인정보는 삭제되지만, 작성한 가계부 데이터는 가족 구성원들을 위해 익명으로 보존됩니다.',
       [
-        { text: '취소', style: 'cancel' },
-        { text: '탈퇴', style: 'destructive', onPress: handleDeleteAccount }
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('account.delete'), style: 'destructive', onPress: handleDeleteAccount }
       ]
     );
   };
@@ -170,7 +172,7 @@ export default function DeleteAccountScreen({ navigation }: Props) {
               textColor={themeColors.text.secondary}
               disabled={isDeleting}
             >
-              취소
+              {t('common.cancel')}
             </Button>
             
             <Button
@@ -182,7 +184,7 @@ export default function DeleteAccountScreen({ navigation }: Props) {
               buttonColor="#D32F2F"
               textColor="white"
             >
-              {isDeleting ? '탈퇴 처리 중...' : '회원 탈퇴'}
+              {isDeleting ? t('account.deleting') : t('account.delete')}
             </Button>
           </View>
         </Card.Content>

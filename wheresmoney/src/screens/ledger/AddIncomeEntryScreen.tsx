@@ -20,6 +20,7 @@ import { LedgerService } from '../../services/ledger';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { colors, darkColors } from '../../theme';
 import { INCOME_CATEGORIES } from '../../constants/categories';
+import { useTranslation } from 'react-i18next';
 
 type AddIncomeEntryScreenRouteProp = RouteProp<HomeStackParamList, 'AddIncomeEntry'>;
 type AddIncomeEntryScreenNavigationProp = StackNavigationProp<HomeStackParamList, 'AddIncomeEntry'>;
@@ -39,6 +40,7 @@ export default function AddIncomeEntryScreen({ route, navigation }: Props) {
   const [error, setError] = useState('');
   const { isDarkMode, currency } = useSettingsStore();
   const themeColors = isDarkMode ? darkColors : colors;
+  const { t } = useTranslation();
 
   // 이미지 리사이즈 함수
   const resizeImage = async (uri: string): Promise<string> => {
@@ -161,10 +163,10 @@ export default function AddIncomeEntryScreen({ route, navigation }: Props) {
     <ScrollView style={[styles.container, { backgroundColor: themeColors.background.secondary }]}>
       <Card style={[styles.card, { backgroundColor: themeColors.surface.primary }]}>
         <Card.Content>
-          <Title style={[styles.title, { color: themeColors.text.primary }]}>수입 등록</Title>
+          <Title style={[styles.title, { color: themeColors.text.primary }]}>{t('navigation.addIncome')}</Title>
 
           <TextInput
-            label="금액"
+            label={t('entry.amount')}
             value={amount}
             onChangeText={setAmount}
             keyboardType="numeric"
@@ -191,7 +193,7 @@ export default function AddIncomeEntryScreen({ route, navigation }: Props) {
           </View>
 
           <TextInput
-            label="내용"
+            label={t('entry.content')}
             value={description}
             onChangeText={setDescription}
             style={styles.input}
@@ -208,7 +210,7 @@ export default function AddIncomeEntryScreen({ route, navigation }: Props) {
                 onPress={showImagePicker}
                 style={styles.changeImageButton}
               >
-                사진 변경
+                {t('image.changePhoto')}
               </Button>
             </View>
           ) : (
@@ -218,7 +220,7 @@ export default function AddIncomeEntryScreen({ route, navigation }: Props) {
               style={styles.addImageButton}
               icon="camera"
             >
-              사진 추가 (필수)
+              {t('image.addPhotoRequired')}
             </Button>
           )}
 
@@ -235,7 +237,7 @@ export default function AddIncomeEntryScreen({ route, navigation }: Props) {
             disabled={!amount || !selectedCategoryId || !description.trim() || !image}
             style={styles.saveButton}
           >
-            저장
+            {t('entry.saveIncome')}
           </Button>
         </Card.Content>
       </Card>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { useTheme } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '../stores/settingsStore';
 import { AuthStackParamList } from '../types';
 
@@ -12,6 +13,7 @@ import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 const Stack = createStackNavigator<AuthStackParamList>();
 
 export default function AuthNavigator() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const { isDarkMode } = useSettingsStore();
 
@@ -31,17 +33,17 @@ export default function AuthNavigator() {
       <Stack.Screen 
         name="Login" 
         component={LoginScreen}
-        options={{ title: '로그인' }}
+        options={{ title: t('navigation.login') }}
       />
       <Stack.Screen 
         name="SignUp" 
         component={SignUpScreen}
-        options={{ title: '회원가입' }}
+        options={{ title: t('navigation.signUp') }}
       />
       <Stack.Screen 
         name="ForgotPassword" 
         component={ForgotPasswordScreen}
-        options={{ title: '비밀번호 찾기' }}
+        options={{ title: t('navigation.forgotPassword') }}
       />
     </Stack.Navigator>
   );

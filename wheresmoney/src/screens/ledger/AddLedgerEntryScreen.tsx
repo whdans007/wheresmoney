@@ -20,6 +20,7 @@ import { CategoryService, CategoryData } from '../../services/category';
 import { LedgerService } from '../../services/ledger';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { colors, darkColors } from '../../theme';
+import { useTranslation } from 'react-i18next';
 
 type AddLedgerEntryScreenRouteProp = RouteProp<HomeStackParamList, 'AddLedgerEntry'>;
 type AddLedgerEntryScreenNavigationProp = StackNavigationProp<HomeStackParamList, 'AddLedgerEntry'>;
@@ -41,6 +42,7 @@ export default function AddLedgerEntryScreen({ route, navigation }: Props) {
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const { isDarkMode, currency } = useSettingsStore();
   const themeColors = isDarkMode ? darkColors : colors;
+  const { t } = useTranslation();
 
   // 카테고리 로드
   const loadCategories = async () => {
@@ -243,7 +245,7 @@ export default function AddLedgerEntryScreen({ route, navigation }: Props) {
                 onPress={showImagePicker}
                 style={styles.changeImageButton}
               >
-                사진 변경
+                {t('image.changePhoto')}
               </Button>
             </View>
           ) : (
@@ -253,7 +255,7 @@ export default function AddLedgerEntryScreen({ route, navigation }: Props) {
               style={styles.addImageButton}
               icon="camera"
             >
-              사진 추가 (필수)
+              {t('image.addPhotoRequired')}
             </Button>
           )}
 
@@ -270,7 +272,7 @@ export default function AddLedgerEntryScreen({ route, navigation }: Props) {
             disabled={!amount || !selectedCategoryId || !description.trim() || !image}
             style={styles.saveButton}
           >
-            저장
+            {t('common.save')}
           </Button>
         </Card.Content>
       </Card>

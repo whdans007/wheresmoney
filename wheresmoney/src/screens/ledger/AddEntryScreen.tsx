@@ -21,7 +21,8 @@ import { CategoryService, CategoryData } from '../../services/category';
 import { LedgerService } from '../../services/ledger';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { colors, darkColors } from '../../theme';
-import { DEFAULT_CATEGORIES, INCOME_CATEGORIES } from '../../constants/categories';
+import { getDefaultCategories, getIncomeCategories } from '../../utils/categories';
+import { useTranslation } from 'react-i18next';
 
 type AddEntryScreenRouteProp = RouteProp<HomeStackParamList, 'AddEntry'>;
 type AddEntryScreenNavigationProp = StackNavigationProp<HomeStackParamList, 'AddEntry'>;
@@ -44,11 +45,12 @@ export default function AddEntryScreen({ route, navigation }: Props) {
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const { isDarkMode, currency } = useSettingsStore();
   const themeColors = isDarkMode ? darkColors : colors;
+  const { t } = useTranslation();
 
   // 선택된 타입에 따라 카테고리 결정
   const currentCategories = entryType === 'expense' ? 
-    (expenseCategories.length > 0 ? expenseCategories : DEFAULT_CATEGORIES) : 
-    INCOME_CATEGORIES;
+    (expenseCategories.length > 0 ? expenseCategories : getDefaultCategories()) : 
+    getIncomeCategories();
 
   // 지출 카테고리만 로드 (수입 카테고리는 상수 사용)
   const loadCategories = async () => {
@@ -58,12 +60,12 @@ export default function AddEntryScreen({ route, navigation }: Props) {
       if (result.success && result.categories) {
         setExpenseCategories(result.categories);
       } else {
-        console.error('지출 카테고리 로딩 실패:', result.error);
-        setError('지출 카테고리를 불러오는데 실패했습니다.');
+        console.error('Expense categories loading failed:', result.error);
+        setError(t('entry.errors.categoryLoadFailed'));
       }
     } catch (error) {
-      console.error('카테고리 로딩 예외:', error);
-      setError('카테고리를 불러오는데 실패했습니다.');
+      console.error('Categories loading exception:', error);
+      setError(t('entry.errors.categoryException'));
     } finally {
       setCategoriesLoading(false);
     }
@@ -117,7 +119,7 @@ export default function AddEntryScreen({ route, navigation }: Props) {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     
     if (permission.granted === false) {
-      Alert.alert('권한 필요', '카메라 접근 권한이 필요합니다.');
+      Alert.alert(t('entry.photo.permissionNeeded'), t('entry.photo.permissionMessage'));
       return;
     }
 
@@ -135,12 +137,12 @@ export default function AddEntryScreen({ route, navigation }: Props) {
 
   const showImagePicker = () => {
     Alert.alert(
-      '사진 선택',
-      '사진을 어떻게 추가하시겠습니까?',
+      t('entry.photo.selectMethod'),
+      t('entry.photo.selectMethodMessage'),
       [
-        { text: '카메라', onPress: takePhoto },
-        { text: '갤러리', onPress: pickImage },
-        { text: '취소', style: 'cancel' },
+        { text: t('entry.photo.camera'), onPress: takePhoto },
+        { text: t('entry.photo.gallery'), onPress: pickImage },
+        { text: t('common.cancel'), style: 'cancel' },
       ]
     );
   };
@@ -149,29 +151,29 @@ export default function AddEntryScreen({ route, navigation }: Props) {
     // 지출의 경우 사진과 내용 필수
     if (entryType === 'expense') {
       if (!image) {
-        setError('지출 기록은 사진이 필수입니다.');
+        setError(t('entry.errors.photoRequired'));
         return;
       }
       if (!description.trim()) {
-        setError('지출 기록은 내용이 필수입니다.');
+        setError(t('entry.errors.contentRequired'));
         return;
       }
     }
 
     if (!amount || !selectedCategoryId) {
-      setError('금액과 카테고리는 필수입니다.');
+      setError(t('entry.errors.enterAmount') + ' ' + t('entry.errors.selectCategory'));
       return;
     }
 
     // 지출 선택시 임시 카테고리이면 에러
     if (entryType === 'expense' && selectedCategoryId.startsWith('temp-')) {
-      setError('카테고리 정보를 불러오고 있습니다. 잠시 후 다시 시도해주세요.');
+      setError(t('entry.errors.categoryLoading'));
       return;
     }
 
     const numericAmount = parseFloat(amount);
     if (isNaN(numericAmount) || numericAmount <= 0) {
-      setError('올바른 금액을 입력해주세요.');
+      setError(t('entry.errors.invalidAmount'));
       return;
     }
 
@@ -194,12 +196,12 @@ export default function AddEntryScreen({ route, navigation }: Props) {
         familyId,
         amount: finalAmount,
         categoryId: selectedCategoryId,
-        description: entryType === 'expense' ? description.trim() : '수입',
+        description: entryType === 'expense' ? description.trim() : t('entry.income'),
         imageUri: entryType === 'expense' ? image : null,
       });
 
       if (!result.success) {
-        setError(result.error || `${entryType === 'income' ? '수입' : '지출'} 저장에 실패했습니다.`);
+        setError(result.error || t('entry.errors.saveEntryFailed'));
         setLoading(false);
         return;
       }
@@ -209,8 +211,8 @@ export default function AddEntryScreen({ route, navigation }: Props) {
       // 성공적으로 저장되면 뒤로 가기
       navigation.goBack();
     } catch (error: any) {
-      console.error(`${entryType === 'income' ? '수입' : '지출'} 저장 예외:`, error);
-      setError(`${entryType === 'income' ? '수입' : '지출'} 저장 중 오류가 발생했습니다.`);
+      console.error('Entry save exception:', error);
+      setError(t('entry.errors.saveEntryFailed'));
       setLoading(false);
     }
   };
@@ -221,23 +223,23 @@ export default function AddEntryScreen({ route, navigation }: Props) {
     <ScrollView style={[styles.container, { backgroundColor: themeColors.background.secondary }]}>
       <Card style={[styles.card, { backgroundColor: themeColors.surface.primary }]}>
         <Card.Content>
-          <Title style={[styles.title, { color: themeColors.text.primary }]}>가계부 작성</Title>
+          <Title style={[styles.title, { color: themeColors.text.primary }]}>{t('navigation.addEntry')}</Title>
 
           {/* 수입/지출 선택 */}
-          <Text style={[styles.sectionTitle, { color: themeColors.text.primary }]}>종류</Text>
+          <Text style={[styles.sectionTitle, { color: themeColors.text.primary }]}>{t('entry.type')}</Text>
           <SegmentedButtons
             value={entryType}
             onValueChange={(value) => setEntryType(value as 'expense' | 'income')}
             buttons={[
               {
                 value: 'expense',
-                label: '지출',
+                label: t('entry.expense'),
                 icon: 'minus',
                 style: entryType === 'expense' ? { backgroundColor: '#FF6B6B' } : undefined,
               },
               {
                 value: 'income',
-                label: '수입',
+                label: t('entry.income'),
                 icon: 'plus',
                 style: entryType === 'income' ? { backgroundColor: '#4CAF50' } : undefined,
               },
@@ -246,7 +248,7 @@ export default function AddEntryScreen({ route, navigation }: Props) {
           />
 
           <TextInput
-            label="금액"
+            label={t('entry.amount')}
             value={amount}
             onChangeText={setAmount}
             keyboardType="numeric"
@@ -255,18 +257,18 @@ export default function AddEntryScreen({ route, navigation }: Props) {
           />
 
           <Text style={[styles.sectionTitle, { color: themeColors.text.primary }]}>
-            {entryType === 'expense' ? '지출 카테고리' : '수입 카테고리'}
+            {entryType === 'expense' ? t('entry.expenseCategories') : t('entry.incomeCategories')}
           </Text>
           {categoriesLoading && entryType === 'expense' ? (
             <View style={styles.categoriesLoadingContainer}>
               <ActivityIndicator size="small" />
-              <Text style={[styles.loadingText, { color: themeColors.text.secondary }]}>카테고리 로딩 중...</Text>
+              <Text style={[styles.loadingText, { color: themeColors.text.secondary }]}>{t('entry.categoriesLoading')}</Text>
             </View>
           ) : currentCategories.length === 0 && entryType === 'expense' ? (
             <View style={styles.categoriesLoadingContainer}>
               <ActivityIndicator size="small" />
               <Text style={[styles.loadingText, { color: themeColors.text.secondary }]}>
-                지출 카테고리를 초기화하는 중입니다...
+                {t('entry.categoriesInitializing')}
               </Text>
             </View>
           ) : (
@@ -291,7 +293,7 @@ export default function AddEntryScreen({ route, navigation }: Props) {
           {entryType === 'expense' && (
             <>
               <TextInput
-                label="내용"
+                label={t('entry.content')}
                 value={description}
                 onChangeText={setDescription}
                 style={styles.input}
@@ -306,7 +308,7 @@ export default function AddEntryScreen({ route, navigation }: Props) {
                 blurOnSubmit={true}
               />
 
-              <Text style={[styles.sectionTitle, { color: themeColors.text.primary }]}>사진 (필수)</Text>
+              <Text style={[styles.sectionTitle, { color: themeColors.text.primary }]}>{t('entry.photoRequired')}</Text>
               {image ? (
                 <View style={styles.imageContainer}>
                   <Image source={{ uri: image }} style={styles.image} />
@@ -315,7 +317,7 @@ export default function AddEntryScreen({ route, navigation }: Props) {
                     onPress={showImagePicker}
                     style={styles.changeImageButton}
                   >
-                    사진 변경
+                    {t('image.changePhoto')}
                   </Button>
                 </View>
               ) : (
@@ -325,7 +327,7 @@ export default function AddEntryScreen({ route, navigation }: Props) {
                   style={styles.addImageButton}
                   icon="camera"
                 >
-                  사진 추가 (필수)
+                  {t('image.addPhotoRequired')}
                 </Button>
               )}
             </>
@@ -351,7 +353,7 @@ export default function AddEntryScreen({ route, navigation }: Props) {
               { backgroundColor: entryType === 'expense' ? '#FF6B6B' : '#4CAF50' }
             ]}
           >
-            {entryType === 'expense' ? '지출 저장' : '수입 저장'}
+            {entryType === 'expense' ? t('entry.saveExpense') : t('entry.saveIncome')}
           </Button>
         </Card.Content>
       </Card>

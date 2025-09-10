@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { 
   Text, 
   Button, 
@@ -21,6 +22,7 @@ interface Props {
 }
 
 export default function ProfileScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { user, signOut } = useAuthStore();
   const { isDarkMode } = useSettingsStore();
   const themeColors = isDarkMode ? darkColors : colors;
@@ -54,15 +56,15 @@ export default function ProfileScreen({ navigation }: Props) {
               style={styles.avatar}
             />
           )}
-          <Title style={[styles.nickname, { color: themeColors.text.primary }]}>{user?.nickname || '사용자'}</Title>
-          <Text style={[styles.email, { color: themeColors.text.secondary }]}>{user?.email || 'user@example.com'}</Text>
+          <Title style={[styles.nickname, { color: themeColors.text.primary }]}>{user?.nickname || t('profile.defaultUser')}</Title>
+          <Text style={[styles.email, { color: themeColors.text.secondary }]}>{user?.email || t('profile.defaultEmail')}</Text>
         </Card.Content>
       </Card>
 
       <Card style={[styles.menuCard, { backgroundColor: themeColors.surface.primary }]}>
         <Card.Content>
           <List.Item
-            title="프로필 수정"
+            title={t('profile.editProfile')}
             left={(props) => <List.Icon {...props} icon="account-edit" />}
             right={(props) => <List.Icon {...props} icon="chevron-right" />}
             onPress={() => {
@@ -70,7 +72,7 @@ export default function ProfileScreen({ navigation }: Props) {
             }}
           />
           <List.Item
-            title="설정"
+            title={t('profile.settings')}
             left={(props) => <List.Icon {...props} icon="cog" />}
             right={(props) => <List.Icon {...props} icon="chevron-right" />}
             onPress={() => {
@@ -78,7 +80,7 @@ export default function ProfileScreen({ navigation }: Props) {
             }}
           />
           <List.Item
-            title="알림 설정"
+            title={t('profile.notification')}
             left={(props) => <List.Icon {...props} icon="bell" />}
             right={(props) => <List.Icon {...props} icon="chevron-right" />}
             onPress={() => {
@@ -86,7 +88,7 @@ export default function ProfileScreen({ navigation }: Props) {
             }}
           />
           <List.Item
-            title="도움말"
+            title={t('profile.help')}
             left={(props) => <List.Icon {...props} icon="help-circle" />}
             right={(props) => <List.Icon {...props} icon="chevron-right" />}
             onPress={() => {
@@ -94,7 +96,7 @@ export default function ProfileScreen({ navigation }: Props) {
             }}
           />
           <List.Item
-            title="회원 탈퇴"
+            title={t('profile.deleteAccount')}
             left={(props) => <List.Icon {...props} icon="account-remove" color="#D32F2F" />}
             right={(props) => <List.Icon {...props} icon="chevron-right" />}
             onPress={() => {
@@ -111,7 +113,7 @@ export default function ProfileScreen({ navigation }: Props) {
         style={styles.signOutButton}
         textColor="#B00020"
       >
-        로그아웃
+        {t('auth.logout')}
       </Button>
 
     </View>

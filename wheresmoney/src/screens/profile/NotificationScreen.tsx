@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import {
   Text,
   Card,
@@ -21,6 +22,7 @@ interface NotificationSettings {
 }
 
 export default function NotificationScreen() {
+  const { t } = useTranslation();
   const { user } = useAuthStore();
   const { isDarkMode } = useSettingsStore();
   const themeColors = isDarkMode ? darkColors : colors;
@@ -46,7 +48,7 @@ export default function NotificationScreen() {
         .single();
 
       if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
-        console.error('알림 설정 로드 오류:', error);
+        console.error(t('notification.errors.loadFailed'), error);
         return;
       }
 
@@ -58,7 +60,7 @@ export default function NotificationScreen() {
         });
       }
     } catch (error) {
-      console.error('알림 설정 로드 예외:', error);
+      console.error(t('notification.errors.loadException'), error);
     } finally {
       setLoading(false);
     }
@@ -82,7 +84,7 @@ export default function NotificationScreen() {
         .single();
 
       if (selectError && selectError.code !== 'PGRST116') {
-        console.error('기존 설정 확인 오류:', selectError);
+        console.error(t('notification.errors.checkExistingFailed'), selectError);
         setSettings(settings);
         return;
       }
@@ -98,7 +100,7 @@ export default function NotificationScreen() {
           .eq('user_id', user.id);
 
         if (error) {
-          console.error('알림 설정 업데이트 오류:', error);
+          console.error(t('notification.errors.updateFailed'), error);
           setSettings(settings);
         }
       } else {
@@ -113,12 +115,12 @@ export default function NotificationScreen() {
           });
 
         if (error) {
-          console.error('알림 설정 생성 오류:', error);
+          console.error(t('notification.errors.createFailed'), error);
           setSettings(settings);
         }
       }
     } catch (error) {
-      console.error('알림 설정 저장 예외:', error);
+      console.error(t('notification.errors.saveException'), error);
       setSettings(settings);
     }
   };
@@ -128,7 +130,7 @@ export default function NotificationScreen() {
       <View style={[styles.loadingContainer, { backgroundColor: themeColors.background.secondary }]}>
         <ActivityIndicator size="large" />
         <Text style={[styles.loadingText, { color: themeColors.text.secondary }]}>
-          알림 설정 로딩 중...
+          {t('notification.loading')}
         </Text>
       </View>
     );
@@ -139,10 +141,10 @@ export default function NotificationScreen() {
       <Card style={[styles.card, { backgroundColor: themeColors.surface.primary }]}>
         <Card.Content>
           <Title style={[styles.title, { color: themeColors.text.primary }]}>
-            알림 설정
+            {t('notification.title')}
           </Title>
           <Text style={[styles.description, { color: themeColors.text.secondary }]}>
-            받고 싶은 알림을 선택하세요
+            {t('notification.description')}
           </Text>
         </Card.Content>
       </Card>
@@ -150,8 +152,8 @@ export default function NotificationScreen() {
       <Card style={[styles.card, { backgroundColor: themeColors.surface.primary }]}>
         <Card.Content>
           <List.Item
-            title="가계부 기록 알림"
-            description="가족 구성원이 새로운 가계부를 등록했을 때"
+            title={t('notification.ledgerEntries.title')}
+            description={t('notification.ledgerEntries.description')}
             left={(props) => <List.Icon {...props} icon="receipt" />}
             right={() => (
               <Switch
@@ -162,8 +164,8 @@ export default function NotificationScreen() {
           />
           <Divider />
           <List.Item
-            title="가족 초대 알림"
-            description="새로운 가족방에 초대받았을 때"
+            title={t('notification.familyInvites.title')}
+            description={t('notification.familyInvites.description')}
             left={(props) => <List.Icon {...props} icon="account-plus" />}
             right={() => (
               <Switch
@@ -174,8 +176,8 @@ export default function NotificationScreen() {
           />
           <Divider />
           <List.Item
-            title="멤버 가입 알림"
-            description="새로운 멤버가 가족방에 참여했을 때"
+            title={t('notification.memberJoins.title')}
+            description={t('notification.memberJoins.description')}
             left={(props) => <List.Icon {...props} icon="account-group" />}
             right={() => (
               <Switch
@@ -190,12 +192,12 @@ export default function NotificationScreen() {
       <Card style={[styles.infoCard, { backgroundColor: themeColors.surface.primary }]}>
         <Card.Content>
           <Text style={[styles.infoTitle, { color: themeColors.text.primary }]}>
-            알림 정보
+            {t('notification.info.title')}
           </Text>
           <Text style={[styles.infoText, { color: themeColors.text.secondary }]}>
-            • 알림은 앱을 사용하지 않을 때만 전송됩니다{'\n'}
-            • 설정 변경은 즉시 적용됩니다{'\n'}
-            • 중요한 시스템 알림은 항상 전송됩니다
+            • {t('notification.info.bullet1')}{'\n'}
+            • {t('notification.info.bullet2')}{'\n'}
+            • {t('notification.info.bullet3')}
           </Text>
         </Card.Content>
       </Card>

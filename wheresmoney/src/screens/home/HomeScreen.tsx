@@ -10,6 +10,7 @@ import {
 } from 'react-native-paper';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useFocusEffect } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { HomeStackParamList } from '../../types';
 import { useFamilyStore } from '../../stores/familyStore';
 import { useSettingsStore } from '../../stores/settingsStore';
@@ -23,6 +24,7 @@ interface Props {
 }
 
 export default function HomeScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { families, loading, setFamilies, setLoading } = useFamilyStore();
   const { isDarkMode } = useSettingsStore();
   const themeColors = isDarkMode ? darkColors : colors;
@@ -52,7 +54,7 @@ export default function HomeScreen({ navigation }: Props) {
   const renderFamilyItem = ({ item }: { item: any }) => (
     <List.Item
       title={item.name}
-      description={item.description || '설명 없음'}
+      description={item.description || t('home.noDescription')}
       left={(props) => <List.Icon {...props} icon="home-group" />}
       right={(props) => <List.Icon {...props} icon="chevron-right" />}
       onPress={() => navigation.navigate('FamilyDetail', { familyId: item.id })}
@@ -63,8 +65,8 @@ export default function HomeScreen({ navigation }: Props) {
     <View style={[styles.container, { backgroundColor: themeColors.background.secondary }]}>
       <Card style={[styles.welcomeCard, { backgroundColor: themeColors.surface.primary }]}>
         <Card.Content>
-          <Title style={{ color: themeColors.text.primary }}>안녕하세요! 👋</Title>
-          <Text style={{ color: themeColors.text.secondary }}>가족과 함께 가계부를 관리해보세요</Text>
+          <Title style={{ color: themeColors.text.primary }}>{t('home.welcome')}</Title>
+          <Text style={{ color: themeColors.text.secondary }}>{t('home.welcomeMessage')}</Text>
         </Card.Content>
       </Card>
 
@@ -75,7 +77,7 @@ export default function HomeScreen({ navigation }: Props) {
           style={styles.actionButton}
           icon="plus"
         >
-          새 가족방 만들기
+          {t('home.createNewFamily')}
         </Button>
         
         <Button
@@ -84,22 +86,21 @@ export default function HomeScreen({ navigation }: Props) {
           style={styles.actionButton}
           icon="account-plus"
         >
-          가족방 참여
+          {t('home.joinFamily')}
         </Button>
       </View>
 
       <Card style={[styles.familiesCard, { backgroundColor: themeColors.surface.primary }]}>
         <Card.Content>
-          <Title style={[styles.sectionTitle, { color: themeColors.text.primary }]}>내 가족방</Title>
+          <Title style={[styles.sectionTitle, { color: themeColors.text.primary }]}>{t('home.myFamilies')}</Title>
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="small" />
-              <Text style={[styles.loadingText, { color: themeColors.text.secondary }]}>가족방 불러오는 중...</Text>
+              <Text style={[styles.loadingText, { color: themeColors.text.secondary }]}>{t('home.loadingFamilies')}</Text>
             </View>
           ) : families.length === 0 ? (
             <Text style={[styles.emptyText, { color: themeColors.text.secondary }]}>
-              아직 가족방이 없습니다.{'\n'}
-              새 가족방을 만들어보세요!
+              {t('home.noFamilies')}
             </Text>
           ) : (
             <FlatList
