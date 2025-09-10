@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { Database } from './supabase';
 import { decode } from 'base64-arraybuffer';
+import { NotificationService } from './notification';
 
 type LedgerEntry = Database['public']['Tables']['ledger_entries']['Row'];
 type LedgerInsert = Database['public']['Tables']['ledger_entries']['Insert'];
@@ -131,6 +132,45 @@ export class LedgerService {
       }
 
       console.log('Ledger entry created successfully:', entry);
+      
+      // 가계부 기록 알림 전송
+      try {
+        console.log('알림 전송 시도 시작...');
+        // 사용자 정보 가져오기
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('nickname')
+          .eq('id', user.id)
+          .single();
+
+        console.log('사용자 정보 조회 결과:', { userData, userError });
+
+        if (!userError && userData) {
+          const isIncome = entryData.amount < 0;
+          console.log('알림 전송:', {
+            familyId: entryData.familyId,
+            userId: user.id,
+            nickname: userData.nickname,
+            amount: entryData.amount,
+            isIncome
+          });
+          
+          await NotificationService.notifyLedgerEntry(
+            entryData.familyId,
+            user.id,
+            userData.nickname,
+            entryData.amount,
+            isIncome
+          );
+          
+          console.log('알림 전송 완료');
+        } else {
+          console.log('사용자 정보가 없어서 알림 전송 건너뜀');
+        }
+      } catch (notificationError) {
+        console.log('알림 전송 중 오류 (무시 가능):', notificationError);
+      }
+
       return { success: true, entry };
     } catch (error: any) {
       console.error('가계부 생성 예외:', error);

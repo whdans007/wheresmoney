@@ -8,6 +8,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import EditProfileScreen from '../screens/profile/EditProfileScreen';
 import SettingsScreen from '../screens/settings/SettingsScreen';
 import DeleteAccountScreen from '../screens/profile/DeleteAccountScreen';
+import NotificationScreen from '../screens/profile/NotificationScreen';
 
 const Stack = createStackNavigator<ProfileStackParamList>();
 
@@ -47,6 +48,11 @@ export default function ProfileNavigator() {
         name="DeleteAccount" 
         component={DeleteAccountScreen}
         options={{ title: '회원 탈퇴' }}
+      />
+      <Stack.Screen 
+        name="Notification" 
+        component={NotificationScreen}
+        options={{ title: '알림 설정' }}
       />
     </Stack.Navigator>
   );

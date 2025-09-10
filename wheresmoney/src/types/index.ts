@@ -66,6 +66,7 @@ export type ProfileStackParamList = {
   EditProfile: undefined;
   Settings: undefined;
   DeleteAccount: undefined;
+  Notification: undefined;
 };
 
 export type AuthStackParamList = {

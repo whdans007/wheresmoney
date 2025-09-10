@@ -82,7 +82,7 @@ export default function ProfileScreen({ navigation }: Props) {
             left={(props) => <List.Icon {...props} icon="bell" />}
             right={(props) => <List.Icon {...props} icon="chevron-right" />}
             onPress={() => {
-              // 알림 설정 기능은 향후 구현 예정
+              navigation.navigate('Notification');
             }}
           />
           <List.Item
