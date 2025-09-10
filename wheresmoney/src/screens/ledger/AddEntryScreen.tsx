@@ -297,6 +297,13 @@ export default function AddEntryScreen({ route, navigation }: Props) {
                 style={styles.input}
                 multiline
                 numberOfLines={3}
+                onSubmitEditing={() => {
+                  // 엔터 키 누르면 사진 추가 버튼 실행
+                  if (!image) {
+                    showImagePicker();
+                  }
+                }}
+                blurOnSubmit={true}
               />
 
               <Text style={[styles.sectionTitle, { color: themeColors.text.primary }]}>사진 (필수)</Text>

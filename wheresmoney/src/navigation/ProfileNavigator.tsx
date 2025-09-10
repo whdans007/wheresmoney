@@ -9,6 +9,7 @@ import EditProfileScreen from '../screens/profile/EditProfileScreen';
 import SettingsScreen from '../screens/settings/SettingsScreen';
 import DeleteAccountScreen from '../screens/profile/DeleteAccountScreen';
 import NotificationScreen from '../screens/profile/NotificationScreen';
+import HelpScreen from '../screens/profile/HelpScreen';
 
 const Stack = createStackNavigator<ProfileStackParamList>();
 
@@ -53,6 +54,11 @@ export default function ProfileNavigator() {
         name="Notification" 
         component={NotificationScreen}
         options={{ title: '알림 설정' }}
+      />
+      <Stack.Screen 
+        name="Help" 
+        component={HelpScreen}
+        options={{ title: '도움말' }}
       />
     </Stack.Navigator>
   );

@@ -90,7 +90,7 @@ export default function ProfileScreen({ navigation }: Props) {
             left={(props) => <List.Icon {...props} icon="help-circle" />}
             right={(props) => <List.Icon {...props} icon="chevron-right" />}
             onPress={() => {
-              // 도움말 기능은 향후 구현 예정
+              navigation.navigate('Help');
             }}
           />
           <List.Item

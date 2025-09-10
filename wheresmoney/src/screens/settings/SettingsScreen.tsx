@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, Linking } from 'react-native';
 import { 
   Text, 
   Card,
@@ -56,6 +56,10 @@ export default function SettingsScreen({ navigation }: Props) {
 
   const currentLanguage = languages.find(l => l.code === language);
   const themeColors = isDarkMode ? darkColors : colors;
+
+  const openDeveloperEmail = () => {
+    Linking.openURL('mailto:whdans0077@gmail.com?subject=Where\'s Money 우리집가계부 문의');
+  };
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: themeColors.background.secondary }]}>
@@ -114,8 +118,10 @@ export default function SettingsScreen({ navigation }: Props) {
             
             <List.Item
               title="개발자 정보"
-              description="가족 가계부 앱"
+              description="필사랑 (philsarang) - whdans0077@gmail.com"
               left={(props) => <List.Icon {...props} icon="code-tags" />}
+              right={(props) => <List.Icon {...props} icon="email" />}
+              onPress={openDeveloperEmail}
             />
           </List.Section>
         </Card.Content>
