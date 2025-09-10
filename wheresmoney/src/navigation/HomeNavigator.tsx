@@ -10,6 +10,8 @@ import CreateFamilyScreen from '../screens/family/CreateFamilyScreen';
 import JoinFamilyScreen from '../screens/family/JoinFamilyScreen';
 import FamilyDetailScreen from '../screens/family/FamilyDetailScreen';
 import AddLedgerEntryScreen from '../screens/ledger/AddLedgerEntryScreen';
+import AddIncomeEntryScreen from '../screens/ledger/AddIncomeEntryScreen';
+import AddEntryScreen from '../screens/ledger/AddEntryScreen';
 import LedgerDetailScreen from '../screens/ledger/LedgerDetailScreen';
 import InviteScreen from '../screens/family/InviteScreen';
 import StatsScreen from '../screens/stats/StatsScreen';
@@ -57,6 +59,16 @@ export default function HomeNavigator() {
       <Stack.Screen 
         name="AddLedgerEntry" 
         component={AddLedgerEntryScreen}
+        options={{ title: '가계부 작성' }}
+      />
+      <Stack.Screen 
+        name="AddIncomeEntry" 
+        component={AddIncomeEntryScreen}
+        options={{ title: '수입 등록' }}
+      />
+      <Stack.Screen 
+        name="AddEntry" 
+        component={AddEntryScreen}
         options={{ title: '가계부 작성' }}
       />
       <Stack.Screen 

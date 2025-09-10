@@ -20,7 +20,6 @@ export default function EditProfileScreen({ navigation }: any) {
   const { isDarkMode } = useSettingsStore();
   const themeColors = isDarkMode ? darkColors : colors;
   const [nickname, setNickname] = useState(user?.nickname || '');
-  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [avatar, setAvatar] = useState<string | null>(user?.avatar_url || null);
@@ -44,9 +43,6 @@ export default function EditProfileScreen({ navigation }: any) {
     }
 
     if (newPassword) {
-      if (!currentPassword) {
-        newErrors.currentPassword = '현재 비밀번호를 입력해주세요.';
-      }
       if (newPassword.length < 6) {
         newErrors.newPassword = '새 비밀번호는 6자 이상이어야 합니다.';
       }
@@ -107,15 +103,20 @@ export default function EditProfileScreen({ navigation }: any) {
     try {
       if (!user) return null;
 
+      console.log('아바타 업로드 시작:', imageUri);
+      
+      // React Native fetch를 사용한 방식
       const response = await fetch(imageUri);
       const blob = await response.blob();
-      const arrayBuffer = await blob.arrayBuffer();
       
+      // ArrayBuffer 대신 직접 blob을 사용
       const fileName = `${user.id}/avatar_${Date.now()}.jpg`;
+      
+      console.log('파일명:', fileName);
       
       const { data, error } = await supabase.storage
         .from('avatars')
-        .upload(fileName, arrayBuffer, {
+        .upload(fileName, blob, {
           contentType: 'image/jpeg',
           cacheControl: '3600',
           upsert: false
@@ -252,20 +253,6 @@ export default function EditProfileScreen({ navigation }: any) {
 
           {/* 비밀번호 변경 섹션 */}
           <Title style={[styles.sectionTitle, { color: themeColors.text.primary }]}>비밀번호 변경 (선택사항)</Title>
-
-          <TextInput
-            label="현재 비밀번호"
-            value={currentPassword}
-            onChangeText={setCurrentPassword}
-            secureTextEntry
-            style={styles.input}
-            error={!!errors.currentPassword}
-          />
-          {errors.currentPassword && (
-            <HelperText type="error" visible={true}>
-              {errors.currentPassword}
-            </HelperText>
-          )}
 
           <TextInput
             label="새 비밀번호"

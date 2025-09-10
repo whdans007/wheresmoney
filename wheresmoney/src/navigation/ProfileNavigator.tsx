@@ -7,6 +7,7 @@ import { ProfileStackParamList } from '../types';
 import ProfileScreen from '../screens/ProfileScreen';
 import EditProfileScreen from '../screens/profile/EditProfileScreen';
 import SettingsScreen from '../screens/settings/SettingsScreen';
+import DeleteAccountScreen from '../screens/profile/DeleteAccountScreen';
 
 const Stack = createStackNavigator<ProfileStackParamList>();
 
@@ -41,6 +42,11 @@ export default function ProfileNavigator() {
         name="Settings" 
         component={SettingsScreen}
         options={{ title: '설정' }}
+      />
+      <Stack.Screen 
+        name="DeleteAccount" 
+        component={DeleteAccountScreen}
+        options={{ title: '회원 탈퇴' }}
       />
     </Stack.Navigator>
   );

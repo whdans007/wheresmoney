@@ -43,6 +43,8 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
   const [loading, setLoading] = useState(false);
   const [membersLoading, setMembersLoading] = useState(false);
   const [totalAmount, setTotalAmount] = useState(0);
+  const [totalIncome, setTotalIncome] = useState(0);
+  const [totalExpense, setTotalExpense] = useState(0);
   const [displayName, setDisplayName] = useState<string>('');
   const [currentUserId, setCurrentUserId] = useState<string>('');
   const [isOwner, setIsOwner] = useState(false);
@@ -118,7 +120,16 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
         
         // 총 금액 계산 (필터링된 데이터 기준)
         const total = filteredEntries.reduce((sum, entry) => sum + entry.amount, 0);
+        const income = filteredEntries
+          .filter(entry => entry.amount < 0)
+          .reduce((sum, entry) => sum + Math.abs(entry.amount), 0);
+        const expense = filteredEntries
+          .filter(entry => entry.amount > 0)
+          .reduce((sum, entry) => sum + entry.amount, 0);
+        
         setTotalAmount(total);
+        setTotalIncome(income);
+        setTotalExpense(expense);
       } else {
         console.error('가계부 로딩 실패:', result.error);
         setLedgerEntries([]);
@@ -414,8 +425,9 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
               </View>
               
               <View style={styles.statsTextContainer}>
-                <Text style={[styles.totalAmountText, { color: themeColors.text.primary }]}>
-                  총 지출: {currency.symbol}{totalAmount.toLocaleString()}
+                <Text style={[styles.summaryText, { color: themeColors.text.secondary }]}>
+                  수입: <Text style={{ color: '#4CAF50' }}>{currency.symbol}{totalIncome.toLocaleString()}</Text>
+                  {'  '}지출: <Text style={{ color: '#FF6B6B' }}>{currency.symbol}{totalExpense.toLocaleString()}</Text>
                 </Text>
               </View>
             </>
@@ -552,7 +564,7 @@ export default function FamilyDetailScreen({ route, navigation }: Props) {
         <FAB
           icon="plus"
           style={styles.fab}
-          onPress={() => navigation.navigate('AddLedgerEntry', { familyId })}
+          onPress={() => navigation.navigate('AddEntry', { familyId })}
         />
       )}
     </View>
@@ -588,6 +600,26 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border.medium,
     minHeight: 50,
   },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing[1],
+  },
+  statsLabel: {
+    ...textStyles.body2,
+    fontWeight: '500',
+  },
+  statsValue: {
+    ...textStyles.body1,
+    fontWeight: 'bold',
+  },
+  summaryText: {
+    ...textStyles.body1,
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
+  },
   totalAmountText: {
     ...textStyles.body1,
     fontWeight: '600',
@@ -599,10 +631,12 @@ const styles = StyleSheet.create({
     borderColor: colors.accent[500],
     borderRadius: spacing[3],
     alignSelf: 'flex-start',
+    minWidth: 80,
+    paddingHorizontal: spacing[2],
   },
   headerStatsButtonLabel: {
     fontSize: 12,
-    marginHorizontal: 0,
+    marginHorizontal: spacing[1],
   },
   tabContainer: {
     flexDirection: 'row',

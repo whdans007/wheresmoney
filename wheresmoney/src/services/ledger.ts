@@ -74,28 +74,46 @@ export class LedgerService {
 
       console.log('User authenticated:', user.id);
 
-      // 1. 이미지 업로드
-      const timestamp = new Date().getTime();
-      const fileName = `${user.id}/${entryData.familyId}/${timestamp}.jpg`;
-      
-      console.log('Starting image upload with fileName:', fileName);
-      const uploadResult = await this.uploadImage(entryData.imageUri, fileName);
-      
-      if (!uploadResult.success || !uploadResult.url) {
-        console.error('Image upload failed:', uploadResult.error);
-        return { success: false, error: uploadResult.error || '이미지 업로드에 실패했습니다.' };
+      // 지출 카테고리에 대해서만 임시 카테고리 ID 체크
+      if (entryData.amount > 0 && entryData.categoryId.startsWith('temp-')) {
+        return { 
+          success: false, 
+          error: '카테고리 정보를 불러오고 있습니다. 잠시 후 다시 시도해주세요.' 
+        };
       }
 
-      console.log('Image upload successful, URL:', uploadResult.url);
+      // 수입 카테고리 ID 처리 (income-* 형태는 null로 저장)
+      const categoryId = entryData.categoryId.startsWith('income-') ? null : entryData.categoryId;
+
+      // 1. 이미지 업로드 (수입의 경우 선택사항)
+      let photoUrl = null;
+      
+      if (entryData.imageUri) {
+        const timestamp = new Date().getTime();
+        const fileName = `${user.id}/${entryData.familyId}/${timestamp}.jpg`;
+        
+        console.log('Starting image upload with fileName:', fileName);
+        const uploadResult = await this.uploadImage(entryData.imageUri, fileName);
+        
+        if (!uploadResult.success || !uploadResult.url) {
+          console.error('Image upload failed:', uploadResult.error);
+          return { success: false, error: uploadResult.error || '이미지 업로드에 실패했습니다.' };
+        }
+
+        photoUrl = uploadResult.url;
+        console.log('Image upload successful, URL:', uploadResult.url);
+      } else {
+        console.log('No image provided, using null for photo_url');
+      }
 
       // 2. 가계부 항목 생성
       const ledgerData: LedgerInsert = {
         family_id: entryData.familyId,
         user_id: user.id,
         amount: entryData.amount,
-        category_id: entryData.categoryId,
+        category_id: categoryId,
         description: entryData.description,
-        photo_url: uploadResult.url,
+        photo_url: photoUrl || '', // null이면 빈 문자열로 처리
         date: entryData.date || new Date().toISOString().split('T')[0],
       };
 

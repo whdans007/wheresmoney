@@ -16,7 +16,7 @@ import { RouteProp } from '@react-navigation/native';
 import { BarChart, PieChart, LineChart } from 'react-native-chart-kit';
 import { HomeStackParamList } from '../../types';
 import { LedgerService } from '../../services/ledger';
-import { DEFAULT_CATEGORIES } from '../../constants/categories';
+import { DEFAULT_CATEGORIES, INCOME_CATEGORIES } from '../../constants/categories';
 import { useFamilyStore } from '../../stores/familyStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { colors, darkColors } from '../../theme';
@@ -62,6 +62,7 @@ export default function StatsScreen({ navigation, route }: Props) {
   const [categoryStats, setCategoryStats] = useState<CategoryStats[]>([]);
   const [memberStats, setMemberStats] = useState<MemberStats[]>([]);
   const [totalExpenses, setTotalExpenses] = useState(0);
+  const [totalIncome, setTotalIncome] = useState(0);
   const [loading, setLoading] = useState(false);
   const chartScrollViewRef = useRef<ScrollView>(null);
   
@@ -115,7 +116,8 @@ export default function StatsScreen({ navigation, route }: Props) {
       
       // 월별 통계 로드
       const monthlyData: MonthlyStats[] = [];
-      let totalAmount = 0;
+      let totalExpenseAmount = 0;
+      let totalIncomeAmount = 0;
       const categoryTotals: { [key: string]: number } = {};
 
       for (let i = 0; i < months; i++) {
@@ -125,22 +127,31 @@ export default function StatsScreen({ navigation, route }: Props) {
         
         const result = await LedgerService.getMonthlyStats(familyId, year, month);
         
+        let monthExpenseAmount = 0; // 이번 월의 지출 합계
+        
         if (result.success && result.totalAmount !== undefined) {
+          // 수입과 지출을 분리해서 계산
+          if (result.categoryStats) {
+            result.categoryStats.forEach(stat => {
+              if (stat.total > 0) {
+                // 지출
+                totalExpenseAmount += stat.total;
+                monthExpenseAmount += stat.total;
+              } else if (stat.total < 0) {
+                // 수입 (음수로 저장되므로 절댓값으로 변환)
+                totalIncomeAmount += Math.abs(stat.total);
+              }
+              categoryTotals[stat.category_id] = (categoryTotals[stat.category_id] || 0) + stat.total;
+            });
+          }
+          
           const monthStats: MonthlyStats = {
             month: `${year}-${month.toString().padStart(2, '0')}`,
-            total: result.totalAmount,
+            total: monthExpenseAmount, // 지출만 표시
             categories: {}
           };
           
           monthlyData.push(monthStats);
-          totalAmount += result.totalAmount;
-          
-          // 카테고리별 누적
-          if (result.categoryStats) {
-            result.categoryStats.forEach(stat => {
-              categoryTotals[stat.category_id] = (categoryTotals[stat.category_id] || 0) + stat.total;
-            });
-          }
         } else {
           monthlyData.push({
             month: `${year}-${month.toString().padStart(2, '0')}`,
@@ -151,12 +162,14 @@ export default function StatsScreen({ navigation, route }: Props) {
       }
 
       setMonthlyStats(monthlyData);
-      setTotalExpenses(totalAmount);
+      setTotalExpenses(totalExpenseAmount);
+      setTotalIncome(totalIncomeAmount);
 
       // 카테고리 통계 생성
       const categoryStatsData: CategoryStats[] = [];
       Object.entries(categoryTotals).forEach(([categoryId, amount]) => {
-        const category = DEFAULT_CATEGORIES.find(c => c.id === categoryId);
+        const category = DEFAULT_CATEGORIES.find(c => c.id === categoryId) ||
+                        INCOME_CATEGORIES.find(c => c.id === categoryId);
         if (category && amount > 0) {
           categoryStatsData.push({
             name: category.name,
@@ -335,9 +348,20 @@ export default function StatsScreen({ navigation, route }: Props) {
 
       <Card style={[styles.summaryCard, { backgroundColor: themeColors.surface.primary }]}>
         <Card.Content>
-          <Title style={[styles.totalAmount, { color: themeColors.primary[500] }]}>
-            총 지출: {currency.symbol}{totalExpenses.toLocaleString()}
-          </Title>
+          <View style={styles.totalAmountContainer}>
+            <View style={styles.totalAmountRow}>
+              <Text style={[styles.totalAmountLabel, { color: themeColors.text.secondary }]}>총 수입:</Text>
+              <Title style={[styles.totalAmount, { color: '#4CAF50' }]}>
+                {currency.symbol}{totalIncome.toLocaleString()}
+              </Title>
+            </View>
+            <View style={styles.totalAmountRow}>
+              <Text style={[styles.totalAmountLabel, { color: themeColors.text.secondary }]}>총 지출:</Text>
+              <Title style={[styles.totalAmount, { color: '#FF6B6B' }]}>
+                {currency.symbol}{totalExpenses.toLocaleString()}
+              </Title>
+            </View>
+          </View>
         </Card.Content>
       </Card>
 
@@ -572,7 +596,27 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   totalAmount: {
-    textAlign: 'center',
+    textAlign: 'right',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  totalAmountContainer: {
+    gap: 8,
+  },
+  totalAmountRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  totalAmountLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  netAmountRow: {
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+    paddingTop: 8,
+    marginTop: 8,
   },
   periodText: {
     textAlign: 'center',

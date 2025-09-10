@@ -14,6 +14,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { HomeStackParamList } from '../../types';
 import { LedgerService } from '../../services/ledger';
 import { CategoryService, CategoryData } from '../../services/category';
+import { DEFAULT_CATEGORIES, INCOME_CATEGORIES } from '../../constants/categories';
 import { useAuthStore } from '../../stores/authStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 
@@ -139,7 +140,10 @@ export default function LedgerDetailScreen({ route, navigation }: Props) {
     );
   }
 
-  const category = categories.find(cat => cat.id === entry.category_id);
+  // 지출 카테고리에서 먼저 찾고, 없으면 수입 카테고리에서 찾기
+  const category = categories.find(cat => cat.id === entry.category_id) ||
+                   DEFAULT_CATEGORIES.find(cat => cat.id === entry.category_id) ||
+                   INCOME_CATEGORIES.find(cat => cat.id === entry.category_id);
   const isOwner = entry.user_id === user?.id;
   const displayDate = new Date(entry.created_at).toLocaleDateString('ko-KR');
   const displayTime = new Date(entry.created_at).toLocaleTimeString('ko-KR');
@@ -149,9 +153,12 @@ export default function LedgerDetailScreen({ route, navigation }: Props) {
       <Card style={styles.card}>
         <Card.Content>
           <View style={styles.header}>
-            <Title style={styles.amount}>
-              {currency.symbol}{entry.amount.toLocaleString()}
+            <Title style={[styles.amount, { color: entry.amount < 0 ? '#2E7D32' : '#2E7D32' }]}>
+              {entry.amount < 0 ? '+' : ''}{currency.symbol}{Math.abs(entry.amount).toLocaleString()}
             </Title>
+            <Text style={[styles.entryType, { color: entry.amount < 0 ? '#4CAF50' : '#FF6B6B' }]}>
+              {entry.amount < 0 ? '수입' : '지출'}
+            </Text>
             {category && (
               <Chip 
                 style={[styles.categoryChip, { backgroundColor: category.color }]}
@@ -184,20 +191,20 @@ export default function LedgerDetailScreen({ route, navigation }: Props) {
           <Text style={styles.label}>내용</Text>
           <Text style={styles.description}>{entry.description}</Text>
 
-          <Text style={styles.label}>사진</Text>
-          {entry.photo_url ? (
-            <Image 
-              source={{ 
-                uri: entry.photo_url,
-                cache: 'reload'
-              }} 
-              style={styles.photo}
-              onError={(error) => console.error('Image load error:', error)}
-              onLoad={() => console.log('Image loaded successfully')}
-              resizeMode="contain"
-            />
-          ) : (
-            <Text style={styles.errorText}>사진을 불러올 수 없습니다.</Text>
+          {entry.photo_url && (
+            <>
+              <Text style={styles.label}>사진</Text>
+              <Image 
+                source={{ 
+                  uri: entry.photo_url,
+                  cache: 'reload'
+                }} 
+                style={styles.photo}
+                onError={(error) => console.error('Image load error:', error)}
+                onLoad={() => console.log('Image loaded successfully')}
+                resizeMode="contain"
+              />
+            </>
           )}
 
           {isOwner && (
@@ -274,6 +281,11 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     color: '#2E7D32',
+  },
+  entryType: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 4,
   },
   categoryChip: {
     alignSelf: 'flex-start',

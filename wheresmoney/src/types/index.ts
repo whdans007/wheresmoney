@@ -65,6 +65,7 @@ export type ProfileStackParamList = {
   ProfileScreen: undefined;
   EditProfile: undefined;
   Settings: undefined;
+  DeleteAccount: undefined;
 };
 
 export type AuthStackParamList = {
@@ -79,6 +80,8 @@ export type HomeStackParamList = {
   JoinFamily: undefined;
   FamilyDetail: { familyId: string };
   AddLedgerEntry: { familyId: string };
+  AddIncomeEntry: { familyId: string };
+  AddEntry: { familyId: string };
   LedgerDetail: { entryId: string };
   Invite: { familyId: string };
   Stats: { familyId: string };

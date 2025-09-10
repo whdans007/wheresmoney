@@ -10,3 +10,11 @@ export const DEFAULT_CATEGORIES = [
   { id: '7', name: '생활용품', color: '#98D8C8', icon: 'home' },
   { id: '8', name: '기타', color: '#CDCDCD', icon: 'dots-horizontal' },
 ];
+
+export const INCOME_CATEGORIES = [
+  { id: 'income-salary', name: '급여', color: '#4CAF50', icon: 'cash' },
+  { id: 'income-allowance', name: '용돈', color: '#8BC34A', icon: 'gift' },
+  { id: 'income-sidejob', name: '부업', color: '#2E7D32', icon: 'briefcase' },
+  { id: 'income-investment', name: '투자수익', color: '#388E3C', icon: 'trending-up' },
+  { id: 'income-other', name: '기타수입', color: '#689F38', icon: 'plus-circle' },
+];
